@@ -22,8 +22,7 @@ if [ "${1:-}" == "--with-docker" ]; then
 fi
 
 if [ "${SKIP_STYLE_CHECK:-no}" != "yes" ]; then
-    pycodestyle tests integration_tests examples --max-line-length 120
-    pylint -j 2 --reports no datacube
+    pylint -j 2 datacube
 fi
 
 # Run tests, taking coverage.

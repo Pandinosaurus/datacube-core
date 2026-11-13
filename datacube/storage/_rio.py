@@ -1,41 +1,50 @@
 # This file is part of the Open Data Cube, see https://opendatacube.org for more information
 #
-# Copyright (c) 2015-2020 ODC Contributors
+# Copyright (c) 2015-2026 ODC Contributors
 # SPDX-License-Identifier: Apache-2.0
 """
 Driver implementation for Rasterio based reader.
 """
-import logging
-import warnings
-import contextlib
-from contextlib import contextmanager
-from threading import RLock
-import numpy as np
-from affine import Affine
-import rasterio
-import rasterio.path
-from urllib.parse import urlparse
-from typing import Optional, Iterator
 
-from datacube.utils import geometry
+from __future__ import annotations
+
+import contextlib
+import logging
+from contextlib import contextmanager
+from typing import override
+from urllib.parse import urlparse
+
+import numpy as np
+import rasterio
+from affine import Affine
+from odc.geo import CRS
+
+from datacube.utils import get_part_from_uri, is_vsipath, uri_to_local_path
 from datacube.utils.math import num2numpy
-from datacube.utils import uri_to_local_path, get_part_from_uri, is_vsipath
 from datacube.utils.rio import activate_from_config
-from ..drivers.datasource import DataSource, GeoRasterReader, RasterShape, RasterWindow
-from ._base import BandInfo
+
+from ..drivers.datasource import DataSource, GeoRasterReader
 from ._hdf5 import HDF5_LOCK
 
-_LOG = logging.getLogger(__name__)
+TYPE_CHECKING = False
+if TYPE_CHECKING:
+    from collections.abc import Generator
+    from threading import RLock
+
+    from ..drivers.datasource import RasterShape, RasterWindow
+    from ._base import BandInfo
+
+_LOG: logging.Logger = logging.getLogger(__name__)
 
 
-def _rasterio_crs(src):
+def _rasterio_crs(src) -> CRS:
     if src.crs is None:
-        raise ValueError('no CRS')
+        raise ValueError("no CRS")
 
-    return geometry.CRS(src.crs)
+    return CRS(src.crs)
 
 
-def maybe_lock(lock):
+def maybe_lock(lock: RLock | None) -> RLock | contextlib.suppress:
     if lock is None:
         return contextlib.suppress()
     return lock
@@ -44,118 +53,80 @@ def maybe_lock(lock):
 class BandDataSource(GeoRasterReader):
     """
     Wrapper for a :class:`rasterio.Band` object
-
-    :type source: rasterio.Band
     """
 
-    def __init__(self, source, nodata=None,
-                 lock: Optional[RLock] = None):
+    def __init__(
+        self,
+        source: rasterio.Band,
+        nodata: np.float32 | np.float64 | np.dtype | None = None,
+        lock: RLock | None = None,
+    ) -> None:
         self.source = source
         if nodata is None:
-            nodata = self.source.ds.nodatavals[self.source.bidx-1]
+            nodata = self.source.ds.nodatavals[self.source.bidx - 1]
 
-        self._nodata = num2numpy(nodata, source.dtype)
+        self._nodata = nodata
         self._lock = lock
 
     @property
+    @override
     def nodata(self):
         return self._nodata
 
     @property
-    def crs(self) -> geometry.CRS:
+    @override
+    def crs(self) -> CRS:
         return _rasterio_crs(self.source.ds)
 
     @property
+    @override
     def transform(self) -> Affine:
         return self.source.ds.transform
 
     @property
+    @override
     def dtype(self) -> np.dtype:
         return np.dtype(self.source.dtype)
 
     @property
+    @override
     def shape(self) -> RasterShape:
         return self.source.shape
 
-    def read(self, window: Optional[RasterWindow] = None,
-             out_shape: Optional[RasterShape] = None) -> Optional[np.ndarray]:
-        """Read data in the native format, returning a numpy array
-        """
+    @override
+    def read(
+        self, window: RasterWindow | None = None, out_shape: RasterShape | None = None
+    ) -> np.ndarray | None:
+        """Read data in the native format, returning a numpy array"""
         with maybe_lock(self._lock):
-            return self.source.ds.read(indexes=self.source.bidx, window=window, out_shape=out_shape)
-
-
-class OverrideBandDataSource(GeoRasterReader):
-    """Wrapper for a rasterio.Band object that overrides nodata, CRS and transform
-
-    This is useful for files with malformed or missing properties.
-
-
-    :type source: rasterio.Band
-    """
-
-    def __init__(self,
-                 source: rasterio.Band,
-                 nodata,
-                 crs: geometry.CRS,
-                 transform: Affine,
-                 lock: Optional[RLock] = None):
-        self.source = source
-        self._nodata = num2numpy(nodata, source.dtype)
-        self._crs = crs
-        self._transform = transform
-        self._lock = lock
-
-    @property
-    def crs(self) -> geometry.CRS:
-        return self._crs
-
-    @property
-    def transform(self) -> Affine:
-        return self._transform
-
-    @property
-    def nodata(self):
-        return self._nodata
-
-    @property
-    def dtype(self) -> np.dtype:
-        return np.dtype(self.source.dtype)
-
-    @property
-    def shape(self) -> RasterShape:
-        return self.source.shape
-
-    def read(self, window: Optional[RasterWindow] = None,
-             out_shape: Optional[RasterShape] = None) -> Optional[np.ndarray]:
-        """Read data in the native format, returning a native array
-        """
-        with maybe_lock(self._lock):
-            return self.source.ds.read(indexes=self.source.bidx, window=window, out_shape=out_shape)
+            return self.source.ds.read(
+                indexes=self.source.bidx, window=window, out_shape=out_shape
+            )
+        return None
 
 
 class RasterioDataSource(DataSource):
     """
     Abstract class used by fuse_sources and :func:`read_from_source`
-
     """
 
-    def __init__(self, filename, nodata, lock=None):
+    def __init__(self, filename, nodata, lock=None) -> None:
         self.filename = filename
         self.nodata = nodata
         self._lock = lock
 
-    def get_bandnumber(self, src):
+    def get_bandnumber(self, src) -> int | None:
         raise NotImplementedError()
 
-    def get_transform(self, shape):
+    def get_transform(self, shape) -> Affine:
         raise NotImplementedError()
 
-    def get_crs(self):
+    def get_crs(self) -> CRS | None:
         raise NotImplementedError()
 
+    @override
     @contextmanager
-    def open(self) -> Iterator[GeoRasterReader]:
+    def open(self) -> Generator[BandDataSource]:
         """Context manager which returns a :class:`BandDataSource`"""
 
         activate_from_config()  # check if settings changed and apply new
@@ -165,39 +136,32 @@ class RasterioDataSource(DataSource):
 
         try:
             _LOG.debug("opening %s", self.filename)
-            with rasterio.DatasetReader(rasterio.path.parse_path(str(self.filename)),
-                                        sharing=False) as src:
-                override = False
-
-                transform = src.transform
-                if transform.is_identity:
-                    override = True
-                    transform = self.get_transform(src.shape)
+            with rasterio.open(str(self.filename), sharing=False) as src:
+                broken = src.transform.is_identity
 
                 try:
-                    crs = _rasterio_crs(src)
+                    _ = _rasterio_crs(src)
                 except ValueError:
-                    override = True
-                    crs = self.get_crs()
+                    broken = True
 
                 bandnumber = self.get_bandnumber(src)
                 band = rasterio.band(src, bandnumber)
-                nodata = src.nodatavals[band.bidx-1] if src.nodatavals[band.bidx-1] is not None else self.nodata
+                nodata = (
+                    src.nodatavals[band.bidx - 1]
+                    if src.nodatavals[band.bidx - 1] is not None
+                    else self.nodata
+                )
                 nodata = num2numpy(nodata, band.dtype)
 
                 if locked:
                     locked = False
                     lock.release()
 
-                if override:
-                    warnings.warn(f"""Broken/missing geospatial data was found in file:
-"{self.filename}"
-Will use approximate metadata for backwards compatibility reasons (#673).
-This behaviour is deprecated. Future versions will raise an error.""",
-                                  category=DeprecationWarning)
-                    yield OverrideBandDataSource(band, nodata=nodata, crs=crs, transform=transform, lock=lock)
-                else:
-                    yield BandDataSource(band, nodata=nodata, lock=lock)
+                if broken:
+                    raise RuntimeError(
+                        f'Broken/missing geospatial data was found in file "{self.filename}"'
+                    )
+                yield BandDataSource(band, nodata=nodata, lock=lock)
 
         except Exception as e:
             _LOG.error("Error opening source dataset: %s", self.filename)
@@ -210,22 +174,21 @@ This behaviour is deprecated. Future versions will raise an error.""",
 class RasterDatasetDataSource(RasterioDataSource):
     """Data source for reading from a Data Cube Dataset"""
 
-    def __init__(self, band: BandInfo):
+    def __init__(self, band: BandInfo) -> None:
         """
         Initialise for reading from a Data Cube Dataset.
 
-        :param dataset: dataset to read from
-        :param measurement_id: measurement to read. a single 'band' or 'slice'
+        :param band: band to read.
         """
         self._band_info = band
         self._hdf = _is_hdf(band.format)
         self._part = get_part_from_uri(band.uri)
         filename = _url2rasterio(band.uri, band.format, band.layer)
         lock = HDF5_LOCK if self._hdf else None
-        super(RasterDatasetDataSource, self).__init__(filename, nodata=band.nodata, lock=lock)
+        super().__init__(filename, nodata=band.nodata, lock=lock)
 
-    def get_bandnumber(self, src=None) -> Optional[int]:
-
+    @override
+    def get_bandnumber(self, src=None) -> int | None:
         # If `band` property is set to an integer it overrides any other logic
         bi = self._band_info
         if bi.band is not None:
@@ -239,7 +202,7 @@ class RasterDatasetDataSource(RasterioDataSource):
             return self._part + 1  # Convert to rasterio 1-based indexing
 
         if src is None:
-            # File wasnt' open, could be unstacked file in a new format, or
+            # File wasn't open, could be unstacked file in a new format, or
             # stacked/unstacked in old. We assume caller knows what to do
             # (maybe based on some side-channel information), so just report
             # undefined.
@@ -248,20 +211,25 @@ class RasterDatasetDataSource(RasterioDataSource):
         if src.count == 1:  # Single-slice netcdf file
             return 1
 
-        raise DeprecationWarning("Stacked netcdf without explicit time index is not supported anymore")
+        raise DeprecationWarning(
+            "Stacked netcdf without explicit time index is not supported anymore"
+        )
 
+    @override
     def get_transform(self, shape: RasterShape) -> Affine:
-        return self._band_info.transform * Affine.scale(1 / shape[1], 1 / shape[0])
+        return self._band_info.transform * Affine.scale(  # type: ignore[operator, type-var, return-value]
+            1 / shape[1], 1 / shape[0]
+        )
 
-    def get_crs(self):
+    @override
+    def get_crs(self) -> CRS | None:
         return self._band_info.crs
 
 
 def _is_hdf(fmt: str) -> bool:
-    """ Check if format is of HDF type (this includes netcdf variants)
-    """
+    """Check if format is of HDF type (this includes netcdf variants)"""
     fmt = fmt.lower()
-    return any(f in fmt for f in ('netcdf', 'hdf'))
+    return any(f in fmt for f in ("netcdf", "hdf"))
 
 
 def _build_hdf_uri(url_str: str, fmt: str, layer: str) -> str:
@@ -269,19 +237,19 @@ def _build_hdf_uri(url_str: str, fmt: str, layer: str) -> str:
         base = url_str
     else:
         url = urlparse(url_str)
-        if url.scheme in (None, ''):
+        if url.scheme in (None, ""):
             raise ValueError("Expect either URL or /vsi path")
 
-        if url.scheme != 'file':
-            raise RuntimeError("Can't access %s over %s" % (fmt, url.scheme))
+        if url.scheme != "file":
+            raise RuntimeError(f"Can't access {fmt} over {url.scheme}")
         base = str(uri_to_local_path(url_str))
 
-    return '{}:"{}":{}'.format(fmt, base, layer)
+    return f'{fmt}:"{base}":{layer}'
 
 
-def _url2rasterio(url_str: str, fmt: str, layer: Optional[str]) -> str:
+def _url2rasterio(url_str: str, fmt: str, layer: str | None) -> str:
     """
-    turn URL into a string that could be passed to raterio.open
+    Turn URL into a string that could be passed to rasterio.open
     """
     if _is_hdf(fmt):
         if layer is None:
@@ -293,10 +261,10 @@ def _url2rasterio(url_str: str, fmt: str, layer: Optional[str]) -> str:
         return url_str
 
     url = urlparse(url_str)
-    if url.scheme in (None, ''):
+    if url.scheme in (None, ""):
         raise ValueError("Expect either URL or /vsi path")
 
-    if url.scheme == 'file':
+    if url.scheme == "file":
         # if local path strip scheme and other gunk
         return str(uri_to_local_path(url_str))
 

@@ -1,6 +1,6 @@
 # This file is part of the Open Data Cube, see https://opendatacube.org for more information
 #
-# Copyright (c) 2015-2020 ODC Contributors
+# Copyright (c) 2015-2026 ODC Contributors
 # SPDX-License-Identifier: Apache-2.0
 """
 py.test configuration fixtures
@@ -9,67 +9,127 @@ This module defines any fixtures or other extensions to py.test to be used throu
 tests in this and sub packages.
 """
 
-import os
+from __future__ import annotations
 
+import os
+from pathlib import Path
+from typing import Any
+
+import pystac
+import pystac.collection
+import pystac.item
 import pytest
 from affine import Affine
+from odc.geo import CRS, wh_
+from odc.geo.geobox import GeoBox
 
 from datacube import Datacube
-from datacube.utils import geometry
-from datacube.utils.documents import read_documents
-from datacube.model import Measurement, MetadataType, DatasetType, Dataset
 from datacube.index.eo3 import prep_eo3
+from datacube.metadata._utils import EO_MD_TYPE
+from datacube.model import (
+    Dataset,
+    LineageTree,
+    Measurement,
+    MetadataType,
+    Product,
+    metadata_from_doc,
+)
+from datacube.utils.documents import load_from_yaml, read_documents
 
+TYPE_CHECKING = False
+if TYPE_CHECKING:
+    from collections.abc import Generator
 
-AWS_ENV_VARS = (
-    "AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN"
-    "AWS_DEFAULT_REGION AWS_DEFAULT_OUTPUT AWS_PROFILE "
-    "AWS_ROLE_SESSION_NAME AWS_CA_BUNDLE "
-    "AWS_SHARED_CREDENTIALS_FILE AWS_CONFIG_FILE"
-).split(" ")
+    import xarray as xr
+
+AWS_ENV_VARS = [
+    "AWS_ACCESS_KEY_ID",
+    "AWS_SECRET_ACCESS_KEY",
+    "AWS_SESSION_TOKEN",
+    "AWS_DEFAULT_REGION",
+    "AWS_DEFAULT_OUTPUT",
+    "AWS_PROFILE",
+    "AWS_ROLE_SESSION_NAME",
+    "AWS_CA_BUNDLE",
+    "AWS_SHARED_CREDENTIALS_FILE",
+    "AWS_CONFIG_FILE",
+]
 
 
 @pytest.fixture
-def example_gdal_path(data_folder):
+def example_gdal_path(data_folder: str) -> str:
     """Return the pathname of a sample geotiff file
 
-    Use this fixture by specifiying an argument named 'example_gdal_path' in your
+    Use this fixture by specifying an argument named 'example_gdal_path' in your
     test method.
     """
     return str(os.path.join(data_folder, "sample_tile_151_-29.tif"))
 
 
 @pytest.fixture
-def no_crs_gdal_path(data_folder):
+def no_crs_gdal_path(data_folder: str) -> str:
     """Return the pathname of a GDAL file that doesn't contain a valid CRS."""
     return str(os.path.join(data_folder, "no_crs_ds.tif"))
 
 
 @pytest.fixture
-def data_folder():
+def data_folder() -> str:
     """Return a string path to the location `test/data`"""
     return os.path.join(os.path.split(os.path.realpath(__file__))[0], "data")
 
 
 @pytest.fixture
-def example_netcdf_path(request):
+def example_netcdf_path(request) -> str:
     """Return a string path to `sample_tile.nc` in the test data dir"""
     return str(request.fspath.dirpath("data/sample_tile.nc"))
 
 
 @pytest.fixture
-def eo3_metadata_file(data_folder):
+def non_geo_dataset_file(data_folder: str) -> str:
+    return os.path.join(data_folder, "ds_non-geo.yaml")
+
+
+@pytest.fixture
+def non_geo_dataset_doc(non_geo_dataset_file):
+    (_, doc), *_ = read_documents(non_geo_dataset_file)
+    return doc
+
+
+@pytest.fixture
+def eo_dataset_file(data_folder: str) -> str:
+    return os.path.join(data_folder, "ds_eo.yaml")
+
+
+@pytest.fixture
+def eo_dataset_doc(eo_dataset_file):
+    (_, doc), *_ = read_documents(eo_dataset_file)
+    return doc
+
+
+@pytest.fixture
+def eo3_dataset_file(data_folder: str) -> str:
+    return os.path.join(data_folder, "ds_eo3.yaml")
+
+
+@pytest.fixture
+def eo3_dataset_doc(eo3_dataset_file):
+    (_, doc), *_ = read_documents(eo3_dataset_file)
+    return doc
+
+
+@pytest.fixture
+def eo3_metadata_file(data_folder: str) -> str:
     return os.path.join(data_folder, "eo3.yaml")
 
 
 @pytest.fixture
-def eo3_metadata(eo3_metadata_file):
+def eo3_metadata(eo3_metadata_file) -> MetadataType:
     (_, doc), *_ = read_documents(eo3_metadata_file)
     return MetadataType(doc)
 
 
 @pytest.fixture
-def eo3_dataset_s2(eo3_metadata):
+def eo3_dataset_s2(eo3_metadata) -> Dataset:
     ds_doc = {
         "$schema": "https://schemas.opendatacube.org/dataset",
         "id": "8b0e2770-5d4e-5238-8995-4aa91691ab85",
@@ -249,41 +309,87 @@ def eo3_dataset_s2(eo3_metadata):
         ],
     }
 
-    return Dataset(DatasetType(eo3_metadata, product_doc), prep_eo3(ds_doc))
+    return Dataset(Product(eo3_metadata, product_doc), prep_eo3(ds_doc))
+
+
+@pytest.fixture
+def ls_scene_metadata(data_folder) -> MetadataType:
+    (_, doc), *_ = read_documents(
+        os.path.join(data_folder, "landsat_scene.odc-type.yaml")
+    )
+    return MetadataType(doc)
+
+
+@pytest.fixture
+def ls5_nbar_product(data_folder: str, ls_scene_metadata) -> Product:
+    (_, doc), *_ = read_documents(
+        os.path.join(data_folder, "ls5_nbar_scene.odc-product.yaml")
+    )
+    return Product(ls_scene_metadata, doc)
+
+
+@pytest.fixture
+def ls5_nbar_dataset(data_folder: str, ls5_nbar_product) -> Dataset:
+    (_, doc), *_ = read_documents(
+        os.path.join(data_folder, "ls5_nbar_scene.odc-metadata.yaml")
+    )
+    return Dataset(ls5_nbar_product, doc)
+
+
+@pytest.fixture
+def ls8_fc_albers_product(data_folder) -> Product:
+    (_, doc), *_ = read_documents(
+        os.path.join(data_folder, "ls8_fc_albers.odc-product.yaml")
+    )
+    return Product(EO_MD_TYPE, doc)
+
+
+@pytest.fixture
+def ls8_fc_albers_dataset(data_folder: str, ls8_fc_albers_product) -> Dataset:
+    (_, doc), *_ = read_documents(
+        os.path.join(data_folder, "ls8_fc_albers.odc-metadata.yaml")
+    )
+    return Dataset(
+        ls8_fc_albers_product,
+        doc,
+        uri="s3://dea-public-data-dev/fractional-cover/fc/v2.2.1/ls8/x_-10/y_-19/2015/07/10/LS8_OLI_FC_3577_-10_-19_20150710014836.yaml",
+    )
 
 
 netcdf_num = 1
 
 
 @pytest.fixture
-def tmpnetcdf_filename(tmpdir):
-    """Return a generated filename for a non-existant netcdf file"""
+def tmpnetcdf_filename(tmpdir) -> str:
+    """Return a generated filename for a non-existent netcdf file"""
     global netcdf_num
-    filename = str(tmpdir.join("testfile_np_%s.nc" % netcdf_num))
+    filename = str(tmpdir.join(f"testfile_np_{netcdf_num}.nc"))
     netcdf_num += 1
     return filename
 
 
 @pytest.fixture
-def odc_style_xr_dataset():
-    """An xarray.Dataset with ODC style coordinates and CRS, and no time dimension.
+def odc_style_xr_dataset(request) -> xr.Dataset:
+    """An xarray.Dataset with ODC style coordinates and CRS
 
     Contains an EPSG:4326, single variable 'B10' of 100x100 int16 pixels."""
     affine = Affine.scale(0.1, 0.1) * Affine.translation(20, 30)
-    geobox = geometry.GeoBox(100, 100, affine, geometry.CRS(GEO_PROJ))
+    geobox = GeoBox(wh_(100, 100), affine, CRS(GEO_PROJ))
 
     return Datacube.create_storage(
-        {}, geobox, [Measurement(name="B10", dtype="int16", nodata=0, units="1")]
+        request.param,
+        geobox,
+        [Measurement(name="B10", dtype="int16", nodata=0, units="1")],
     )
 
 
 @pytest.fixture(scope="session")
-def workdir(tmpdir_factory):
+def workdir(tmpdir_factory) -> Path:
     return tmpdir_factory.mktemp("workdir")
 
 
 @pytest.fixture
-def without_aws_env(monkeypatch):
+def without_aws_env(monkeypatch) -> None:
     for e in AWS_ENV_VARS:
         monkeypatch.delenv(e, raising=False)
 
@@ -296,10 +402,176 @@ GEO_PROJ = (
 
 
 @pytest.fixture(scope="module")
-def dask_client():
+def dask_client() -> Generator:
     from distributed import Client
 
     client = Client(processes=False, threads_per_worker=1, dashboard_address=None)
     yield client
     client.close()
     del client
+
+
+# Test fixtures brought in from odc-stac
+
+TEST_DATA_FOLDER: Path = Path(__file__).parent.joinpath("data")
+PARTIAL_PROJ_STAC: str = "only_crs_proj.json"
+SENTINEL_STAC_COLLECTION: str = "sentinel-2-l2a.collection.json"
+SENTINEL_STAC_MS: str = "S2B_MSIL2A_20190629T212529_R043_T06VVN_20201006T080531.json"
+SENTINEL_STAC_MS_RASTER_EXT: str = (
+    "S2B_MSIL2A_20190629T212529_R043_T06VVN_20201006T080531_raster_ext.json"
+)
+USGS_LANDSAT_STAC_v1: str = "LC08_L2SP_028030_20200114_20200824_02_T1_SR.json"
+S2_L2A_STAC: str = "s2_l2a.stac-item.json"
+S2_L2A_PRODUCT: str = "s2_l2a.odc-product.yaml"
+ODC_DATASET_FILE: str = "ga_ls8c_ard_3-1-0_088080_2020-05-25_final.odc-metadata.yaml"
+ODC_METADATA_FILE: str = "eo3_landsat_ard.odc-type.yaml"
+ODC_PRODUCT_FILE: str = "ard_ls8.odc-product.yaml"
+S1_NRB_STAC: str = "ga_s1a_nrb_0-1-0_T002-003270-IW2_20180306T203033Z_stac-item.json"
+S1_NRB_PRODUCT: str = "ga_s1_nrb_iw_vv_vh_0.odc-product.yaml"
+S1_NRB_METADATA_FILE: str = "eo3_s1_nrb.odc-type.yaml"
+S3_SYN_PRODUCT: str = "s3_syn_2_vg1.odc-product.yaml"
+S3_SYN_STAC: str = "s3_syn_2_vg1.stac-metadata.json"
+
+
+@pytest.fixture
+def partial_proj_stac() -> pystac.Item:
+    return pystac.item.Item.from_file(str(TEST_DATA_FOLDER.joinpath(PARTIAL_PROJ_STAC)))
+
+
+@pytest.fixture
+def no_bands_stac(partial_proj_stac: pystac.Item) -> pystac.Item:
+    partial_proj_stac.assets.clear()
+    return partial_proj_stac
+
+
+@pytest.fixture
+def usgs_landsat_stac_v1() -> pystac.Item:
+    return pystac.item.Item.from_file(
+        str(TEST_DATA_FOLDER.joinpath(USGS_LANDSAT_STAC_v1))
+    )
+
+
+@pytest.fixture
+def sentinel_stac_ms() -> pystac.Item:
+    return pystac.item.Item.from_file(str(TEST_DATA_FOLDER.joinpath(SENTINEL_STAC_MS)))
+
+
+@pytest.fixture
+def sentinel_stac_ms_with_raster_ext() -> pystac.Item:
+    return pystac.item.Item.from_file(
+        str(TEST_DATA_FOLDER.joinpath(SENTINEL_STAC_MS_RASTER_EXT))
+    )
+
+
+@pytest.fixture
+def sentinel_stac_collection() -> pystac.Collection:
+    return pystac.collection.Collection.from_file(
+        str(TEST_DATA_FOLDER.joinpath(SENTINEL_STAC_COLLECTION))
+    )
+
+
+@pytest.fixture
+def s2_l2a_stac() -> pystac.Item:
+    return pystac.item.Item.from_file(str(TEST_DATA_FOLDER.joinpath(S2_L2A_STAC)))
+
+
+@pytest.fixture
+def s2_l2a_product(eo3_metadata) -> Product:
+    filepath = TEST_DATA_FOLDER.joinpath(S2_L2A_PRODUCT)
+    (_, doc), *_ = read_documents(filepath)
+    return Product(eo3_metadata, doc)
+
+
+@pytest.fixture
+def eo3_metadata_type() -> MetadataType:
+    filepath = TEST_DATA_FOLDER.joinpath(ODC_METADATA_FILE)
+    (_, doc), *_ = read_documents(filepath)
+    return metadata_from_doc(doc)
+
+
+@pytest.fixture
+def eo3_product(eo3_metadata_type: MetadataType) -> Product:
+    filepath = TEST_DATA_FOLDER.joinpath(ODC_PRODUCT_FILE)
+    (_, doc), *_ = read_documents(filepath)
+    return Product(eo3_metadata_type, doc)
+
+
+@pytest.fixture
+def odc_dataset_doc() -> dict[str, Any]:
+    filepath = TEST_DATA_FOLDER.joinpath(ODC_DATASET_FILE)
+    with open(str(filepath)) as f:
+        return next(iter(load_from_yaml(f, parse_dates=True)))
+
+
+@pytest.fixture
+def eo3_dataset(eo3_product, odc_dataset_doc) -> Dataset:
+    return Dataset(eo3_product, prep_eo3(odc_dataset_doc), uri=ODC_DATASET_FILE)
+
+
+@pytest.fixture
+def ds_legacy_sources(eo3_product, odc_dataset_doc) -> Dataset:
+    sample_source_def = {
+        "$schema": "https://schemas.opendatacube.org/dataset",
+        "id": "b5f234fe-bba8-5483-9bc0-250360d429cf",
+        "product": {"name": eo3_product.name},
+        "crs": "epsg:3857",
+        "properties": {
+            "datetime": "2020-04-20 00:26:43Z",
+            "odc:processing_datetime": "2020-05-16 10:56:18Z",
+        },
+        "grids": {
+            "default": {
+                "shape": [100, 200],
+                "transform": [10, 0, 100000, 0, -10, 200000, 0, 0, 1],
+            }
+        },
+    }
+    source_ds = Dataset(eo3_product, sample_source_def)
+    return Dataset(
+        eo3_product,
+        prep_eo3(odc_dataset_doc),
+        sources={"level1": source_ds},
+        uri=ODC_DATASET_FILE,
+    )
+
+
+@pytest.fixture
+def ds_ext_lineage(eo3_product, odc_dataset_doc) -> Dataset:
+    ds = Dataset(
+        eo3_product,
+        prep_eo3(odc_dataset_doc, remap_lineage=False),
+        uri=ODC_DATASET_FILE,
+    )
+    ds.source_tree = LineageTree.from_eo3_doc(ds.metadata_doc, home="src_home")
+    return ds
+
+
+@pytest.fixture
+def s1_nrb_metadata_type() -> MetadataType:
+    filepath = TEST_DATA_FOLDER.joinpath(S1_NRB_METADATA_FILE)
+    (_, doc), *_ = read_documents(filepath)
+    return metadata_from_doc(doc)
+
+
+@pytest.fixture
+def s1_nrb_stac() -> pystac.Item:
+    return pystac.item.Item.from_file(str(TEST_DATA_FOLDER.joinpath(S1_NRB_STAC)))
+
+
+@pytest.fixture
+def s1_nrb_product(s1_nrb_metadata_type) -> Product:
+    filepath = TEST_DATA_FOLDER.joinpath(S1_NRB_PRODUCT)
+    (_, doc), *_ = read_documents(filepath)
+    return Product(s1_nrb_metadata_type, doc)
+
+
+@pytest.fixture
+def s3_syn_product(eo3_metadata_type) -> Product:
+    filepath = TEST_DATA_FOLDER.joinpath(S3_SYN_PRODUCT)
+    (_, doc), *_ = read_documents(filepath)
+    return Product(eo3_metadata_type, doc)
+
+
+@pytest.fixture()
+def s3_syn_stac() -> pystac.Item:
+    return pystac.item.Item.from_file(str(TEST_DATA_FOLDER.joinpath(S3_SYN_STAC)))

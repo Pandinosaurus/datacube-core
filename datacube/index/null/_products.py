@@ -1,44 +1,91 @@
 # This file is part of the Open Data Cube, see https://opendatacube.org for more information
 #
-# Copyright (c) 2015-2022 ODC Contributors
+# Copyright (c) 2015-2026 ODC Contributors
 # SPDX-License-Identifier: Apache-2.0
+from __future__ import annotations
+
 import logging
+from typing import override
+
+from odc.geo import CRS
 
 from datacube.index.abstract import AbstractProductResource
-from datacube.model import DatasetType
 
-from typing import Iterable
+TYPE_CHECKING = False
+if TYPE_CHECKING:
+    import datetime
+    from collections.abc import Iterable, Sequence
 
-_LOG = logging.getLogger(__name__)
+    from odc.geo import Geometry
+
+    from datacube.model import Product, QueryDict, QueryField
+    from datacube.utils.changes import Change
+    from datacube.utils.json_types import JsonDict
+
+_LOG: logging.Logger = logging.getLogger(__name__)
 
 
 class ProductResource(AbstractProductResource):
-    def __init__(self, metadata_type_resource):
-        self.metadata_type_resource = metadata_type_resource
-
-    def add(self, product, allow_table_lock=False):
+    @override
+    def add(self, product: Product, allow_table_lock: bool = False) -> Product | None:
         raise NotImplementedError()
 
-    def can_update(self, product, allow_unsafe_updates=False):
+    @override
+    def can_update(
+        self,
+        product: Product,
+        allow_unsafe_updates: bool = False,
+        allow_table_lock: bool = False,
+    ) -> tuple[bool, Iterable[Change], Iterable[Change]]:
         raise NotImplementedError()
 
-    def update(self, product: DatasetType, allow_unsafe_updates=False, allow_table_lock=False):
+    @override
+    def update(
+        self,
+        product: Product,
+        allow_unsafe_updates: bool = False,
+        allow_table_lock: bool = False,
+    ) -> Product | None:
         raise NotImplementedError()
 
-    def update_document(self, definition, allow_unsafe_updates=False, allow_table_lock=False):
+    @override
+    def delete(
+        self, products: Iterable[Product], allow_delete_active: bool = False
+    ) -> Sequence[Product]:
         raise NotImplementedError()
 
-    def get_unsafe(self, id_):  # type: ignore
+    @override
+    def get_unsafe(self, id_: int) -> Product:
         raise KeyError(id_)
 
-    def get_by_name_unsafe(self, name):  # type: ignore
+    @override
+    def get_by_name_unsafe(self, name: str) -> Product:
         raise KeyError(name)
 
-    def get_with_fields(self, field_names):
+    @override
+    def search_robust(self, **query: QueryField) -> Iterable[tuple[Product, QueryDict]]:
         return []
 
-    def search_robust(self, **query):
+    @override
+    def search_by_metadata(self, metadata: JsonDict) -> Iterable[Product]:
         return []
 
-    def get_all(self) -> Iterable[DatasetType]:
+    @override
+    def get_all(self) -> Iterable[Product]:
         return []
+
+    @override
+    def temporal_extent(
+        self, product: str | Product
+    ) -> tuple[datetime.datetime, datetime.datetime]:
+        raise KeyError(str(product))
+
+    @override
+    def spatial_extent(
+        self, product: str | Product, crs: CRS = CRS("EPSG:4326")
+    ) -> Geometry | None:
+        raise KeyError(str(product))
+
+    @override
+    def most_recent_change(self, product: str | Product) -> datetime.datetime | None:
+        raise KeyError(str(product))

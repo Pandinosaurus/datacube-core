@@ -1,79 +1,70 @@
 # This file is part of the Open Data Cube, see https://opendatacube.org for more information
 #
-# Copyright (c) 2015-2020 ODC Contributors
+# Copyright (c) 2015-2026 ODC Contributors
 # SPDX-License-Identifier: Apache-2.0
 """
 Utility functions
 """
 
-from .dates import datetime_to_seconds_since_1970, parse_time
-from .py import cached_property, ignore_exceptions_if, import_function
-from .serialise import jsonify_document
-from .uris import is_url, uri_to_local_path, get_part_from_uri, mk_part_uri, is_vsipath
-from .io import slurp, check_write_path, write_user_secret_file
+from ._misc import DatacubeException, gen_password, report_to_user
+from .dates import parse_time
 from .documents import (
-    InvalidDocException,
-    SimpleDocNav,
     DocReader,
-    is_supported_document_type,
-    read_strings_from_netcdf,
-    read_documents,
-    validate_document,
+    InvalidDocException,
     NoDatesSafeLoader,
-    get_doc_offset,
-    get_doc_offset_safe,
-    netcdf_extract_string,
-    without_lineage_sources,
-    schema_validated,
+    SimpleDocNav,
     _readable_offset,
+    get_doc_offset,
+    is_supported_document_type,
+    netcdf_extract_string,
+    read_documents,
+    read_strings_from_netcdf,
+    schema_validated,
+    validate_document,
+    without_lineage_sources,
 )
+from .io import check_write_path, slurp, write_user_secret_file
 from .math import (
-    unsqueeze_dataset,
-    unsqueeze_data_array,
-    spatial_dims,
     iter_slices,
-    data_resolution_and_offset,
+    spatial_dims,
+    unsqueeze_data_array,
+    unsqueeze_dataset,
 )
-from ._misc import (
-    DatacubeException,
-    gen_password,
-)
+from .py import ignore_exceptions_if, import_function
+from .serialise import jsonify_document
+from .uris import get_part_from_uri, is_url, is_vsipath, mk_part_uri, uri_to_local_path
 
-
-__all__ = (
-    "datetime_to_seconds_since_1970",
-    "parse_time",
-    "cached_property",
-    "ignore_exceptions_if",
-    "import_function",
-    "jsonify_document",
-    "is_url",
-    "is_vsipath",
-    "uri_to_local_path",
-    "get_part_from_uri",
-    "mk_part_uri",
-    "InvalidDocException",
-    "SimpleDocNav",
-    "DocReader",
-    "is_supported_document_type",
-    "read_strings_from_netcdf",
-    "read_documents",
-    "validate_document",
-    "NoDatesSafeLoader",
-    "get_doc_offset",
-    "get_doc_offset_safe",
-    "netcdf_extract_string",
-    "without_lineage_sources",
-    "unsqueeze_data_array",
-    "unsqueeze_dataset",
-    "spatial_dims",
-    "iter_slices",
-    "data_resolution_and_offset",
+__all__ = [
     "DatacubeException",
-    "schema_validated",
-    "write_user_secret_file",
-    "slurp",
+    "DocReader",
+    "InvalidDocException",
+    "NoDatesSafeLoader",
+    "SimpleDocNav",
+    "_readable_offset",
     "check_write_path",
     "gen_password",
-    "_readable_offset",
-)
+    "get_doc_offset",
+    "get_part_from_uri",
+    "ignore_exceptions_if",
+    "import_function",
+    "is_supported_document_type",
+    "is_url",
+    "is_vsipath",
+    "iter_slices",
+    "jsonify_document",
+    "mk_part_uri",
+    "netcdf_extract_string",
+    "parse_time",
+    "read_documents",
+    "read_strings_from_netcdf",
+    "report_to_user",
+    "schema_validated",
+    "slurp",
+    "spatial_dims",
+    "unsqueeze_data_array",
+    "unsqueeze_dataset",
+    "uri_to_local_path",
+    "validate_document",
+    "without_lineage_sources",
+    "write_user_secret_file",
+]

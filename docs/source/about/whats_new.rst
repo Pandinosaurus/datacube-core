@@ -1,0 +1,2618 @@
+.. _whats_new:
+
+.. default-role:: code
+
+Release History
+***************
+
+1.9.22 (1 September 2026)
+=========================
+
+Includes a bug fix to STAC metadata generation when using relative asset paths.
+
+What's Changed
+--------------
+
+* CI: disable uv cache for releases by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2518
+* [docs] Fix edit page links.  Add a target for database roles by @omad in https://github.com/opendatacube/datacube-core/pull/2524
+* [cli] datacube-worker was already removed, finish it off 🧹 by @omad in https://github.com/opendatacube/datacube-core/pull/2526
+* [cli] Be explicit about CLI name by @omad in https://github.com/opendatacube/datacube-core/pull/2525
+* Update to Ruff 0.16.0 by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2550
+* Refactor: make get_dataset_fields per instance by @SpacemanPaul in https://github.com/opendatacube/datacube-core/pull/2552
+* Add sorting of release notes by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2558
+* Upgrade setuptools-scm and uv.lock by @omad in https://github.com/opendatacube/datacube-core/pull/2561
+* `dataset add` stac relative asset paths option by @Ariana-B in https://github.com/opendatacube/datacube-core/pull/2562
+* Prepare for 1.9.22 release by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2576
+
+Automated Updates
+-----------------
+
+* build(deps): bump astral-sh/uv from 0.11.20 to 0.11.21 in /docker by @dependabot[bot] in https://github.com/opendatacube/datacube-core/pull/2517
+* [pre-commit.ci] pre-commit autoupdate by @pre-commit-ci[bot] in https://github.com/opendatacube/datacube-core/pull/2519
+* build(deps): bump the actions-deps group with 3 updates by @dependabot[bot] in https://github.com/opendatacube/datacube-core/pull/2520
+* build(deps): bump astral-sh/uv from 0.11.21 to 0.11.22 in /docker by @dependabot[bot] in https://github.com/opendatacube/datacube-core/pull/2521
+* build(deps): bump astral-sh/uv from 0.11.22 to 0.11.23 in /docker by @dependabot[bot] in https://github.com/opendatacube/datacube-core/pull/2522
+* build(deps): bump msgpack from 1.1.2 to 1.2.1 by @dependabot[bot] in https://github.com/opendatacube/datacube-core/pull/2523
+* [pre-commit.ci] pre-commit autoupdate by @pre-commit-ci[bot] in https://github.com/opendatacube/datacube-core/pull/2527
+* build(deps): bump codecov/codecov-action from 6.0.1 to 7.0.0 in the actions-deps group by @dependabot[bot] in https://github.com/opendatacube/datacube-core/pull/2528
+* build(deps): bump astral-sh/uv from 0.11.23 to 0.11.24 in /docker by @dependabot[bot] in https://github.com/opendatacube/datacube-core/pull/2529
+* build(deps): bump astral-sh/uv from 0.11.24 to 0.11.25 in /docker by @dependabot[bot] in https://github.com/opendatacube/datacube-core/pull/2530
+* [pre-commit.ci] pre-commit autoupdate by @pre-commit-ci[bot] in https://github.com/opendatacube/datacube-core/pull/2531
+* build(deps): bump actions/checkout from 6.0.3 to 7.0.0 in the actions-deps group by @dependabot[bot] in https://github.com/opendatacube/datacube-core/pull/2532
+* build(deps): bump astral-sh/uv from 0.11.25 to 0.11.26 in /docker by @dependabot[bot] in https://github.com/opendatacube/datacube-core/pull/2533
+* [pre-commit.ci] pre-commit autoupdate by @pre-commit-ci[bot] in https://github.com/opendatacube/datacube-core/pull/2534
+* build(deps): bump actions/cache from 5.0.5 to 6.1.0 in the actions-deps group by @dependabot[bot] in https://github.com/opendatacube/datacube-core/pull/2536
+* build(deps): bump astral-sh/uv from 0.11.26 to 0.11.27 in /docker by @dependabot[bot] in https://github.com/opendatacube/datacube-core/pull/2535
+* build(deps): bump astral-sh/uv from 0.11.27 to 0.11.28 in /docker by @dependabot[bot] in https://github.com/opendatacube/datacube-core/pull/2537
+* build(deps): bump mistune from 3.2.1 to 3.3.0 by @dependabot[bot] in https://github.com/opendatacube/datacube-core/pull/2538
+* [pre-commit.ci] pre-commit autoupdate by @pre-commit-ci[bot] in https://github.com/opendatacube/datacube-core/pull/2539
+* build(deps): bump the actions-deps group with 3 updates by @dependabot[bot] in https://github.com/opendatacube/datacube-core/pull/2540
+* build(deps): bump astral-sh/uv from 0.11.28 to 0.11.29 in /docker by @dependabot[bot] in https://github.com/opendatacube/datacube-core/pull/2541
+* [pre-commit.ci] pre-commit autoupdate by @pre-commit-ci[bot] in https://github.com/opendatacube/datacube-core/pull/2542
+* build(deps): bump the actions-deps group with 2 updates by @dependabot[bot] in https://github.com/opendatacube/datacube-core/pull/2544
+* build(deps): bump astral-sh/uv from 0.11.29 to 0.11.30 in /docker by @dependabot[bot] in https://github.com/opendatacube/datacube-core/pull/2543
+* build(deps): bump pillow from 12.2.0 to 12.3.0 by @dependabot[bot] in https://github.com/opendatacube/datacube-core/pull/2545
+* build(deps): bump astral-sh/uv from 0.11.30 to 0.11.31 in /docker by @dependabot[bot] in https://github.com/opendatacube/datacube-core/pull/2547
+* build(deps): bump osgeo/gdal from ubuntu-full-3.13.1 to ubuntu-full-3.13.2 in /docker by @dependabot[bot] in https://github.com/opendatacube/datacube-core/pull/2546
+* build(deps): bump astral-sh/uv from 0.11.31 to 0.11.32 in /docker by @dependabot[bot] in https://github.com/opendatacube/datacube-core/pull/2548
+* build(deps): bump the actions-deps group with 2 updates by @dependabot[bot] in https://github.com/opendatacube/datacube-core/pull/2551
+* build(deps): bump astral-sh/uv from 0.11.32 to 0.12.0 in /docker by @dependabot[bot] in https://github.com/opendatacube/datacube-core/pull/2553
+* [pre-commit.ci] pre-commit autoupdate by @pre-commit-ci[bot] in https://github.com/opendatacube/datacube-core/pull/2549
+* build(deps): bump the actions-deps group with 3 updates by @dependabot[bot] in https://github.com/opendatacube/datacube-core/pull/2555
+* build(deps): bump astral-sh/uv from 0.12.0 to 0.12.1 in /docker by @dependabot[bot] in https://github.com/opendatacube/datacube-core/pull/2554
+* build(deps): bump cryptography from 48.0.1 to 50.0.0 by @dependabot[bot] in https://github.com/opendatacube/datacube-core/pull/2556
+* [pre-commit.ci] pre-commit autoupdate by @pre-commit-ci[bot] in https://github.com/opendatacube/datacube-core/pull/2557
+* build(deps): bump astral-sh/uv from 0.12.1 to 0.12.3 in /docker by @dependabot[bot] in https://github.com/opendatacube/datacube-core/pull/2559
+* build(deps): bump the actions-deps group with 2 updates by @dependabot[bot] in https://github.com/opendatacube/datacube-core/pull/2560
+* [pre-commit.ci] pre-commit autoupdate by @pre-commit-ci[bot] in https://github.com/opendatacube/datacube-core/pull/2563
+* build(deps): bump github/codeql-action/upload-sarif from 4.37.4 to 4.37.6 in the actions-deps group by @dependabot[bot] in https://github.com/opendatacube/datacube-core/pull/2565
+* build(deps): bump astral-sh/uv from 0.12.3 to 0.12.5 in /docker by @dependabot[bot] in https://github.com/opendatacube/datacube-core/pull/2564
+* build(deps): bump osgeo/gdal from ubuntu-full-3.13.2 to ubuntu-full-3.13.3 in /docker by @dependabot[bot] in https://github.com/opendatacube/datacube-core/pull/2567
+* [pre-commit.ci] pre-commit autoupdate by @pre-commit-ci[bot] in https://github.com/opendatacube/datacube-core/pull/2568
+* build(deps): bump the actions-deps group with 2 updates by @dependabot[bot] in https://github.com/opendatacube/datacube-core/pull/2569
+* build(deps): bump astral-sh/uv from 0.12.5 to 0.12.7 in /docker by @dependabot[bot] in https://github.com/opendatacube/datacube-core/pull/2571
+* build(deps): bump the actions-deps group with 2 updates by @dependabot[bot] in https://github.com/opendatacube/datacube-core/pull/2574
+* [pre-commit.ci] pre-commit autoupdate by @pre-commit-ci[bot] in https://github.com/opendatacube/datacube-core/pull/2572
+* build(deps): bump astral-sh/uv from 0.12.7 to 0.12.8 in /docker by @dependabot[bot] in https://github.com/opendatacube/datacube-core/pull/2573
+
+The Open Data Cube Steering Council thanks and acknowledges RISE, Geoscience Australia and CSIRO
+for their contributions to this release and ongoing support of the project.
+
+**Full Changelog**: https://github.com/opendatacube/datacube-core/compare/1.9.21...1.9.22
+
+1.9.21 (11 June 2026)
+=====================
+
+Includes a bug fix to STAC metadata generation.
+
+Datacube-core now requires Python 3.12 at minimum.  The previous minimum Python requirement (3.10)
+is only a few months away from end-of-life and it is becoming harder and harder to maintain support
+as upstream libraries bump their own minimum requirements.
+
+What's Changed
+--------------
+
+* pyproject: permit click 8.4.1 by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2500
+* readthedocs: use Ubuntu 26.04/Python 3.14 by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2510
+* Ensure STAC raster:bands is valid JSON by @Ariana-B in https://github.com/opendatacube/datacube-core/pull/2508
+* pyproject: require Python 3.12 by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2504
+* pyproject: remove Python 3.10 pins by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2513
+* Prepare for 1.9.21 release by @SpacemanPaul in https://github.com/opendatacube/datacube-core/pull/2515
+
+Automated Updates
+-----------------
+
+* build(deps): bump astral-sh/uv from 0.11.16 to 0.11.17 in /docker by @dependabot[bot] in https://github.com/opendatacube/datacube-core/pull/2501
+* [pre-commit.ci] pre-commit autoupdate by @pre-commit-ci[bot] in https://github.com/opendatacube/datacube-core/pull/2503
+* build(deps): bump astral-sh/uv from 0.11.17 to 0.11.18 in /docker by @dependabot[bot] in https://github.com/opendatacube/datacube-core/pull/2506
+* build(deps): bump the actions-deps group with 4 updates by @dependabot[bot] in https://github.com/opendatacube/datacube-core/pull/2505
+* build(deps): bump astral-sh/uv from 0.11.18 to 0.11.19 in /docker by @dependabot[bot] in https://github.com/opendatacube/datacube-core/pull/2507
+* build(deps): bump osgeo/gdal from ubuntu-full-3.13.0 to ubuntu-full-3.13.1 in /docker by @dependabot[bot] in https://github.com/opendatacube/datacube-core/pull/2509
+* [pre-commit.ci] pre-commit autoupdate by @pre-commit-ci[bot] in https://github.com/opendatacube/datacube-core/pull/2511
+* build(deps): bump astral-sh/uv from 0.11.19 to 0.11.20 in /docker by @dependabot[bot] in https://github.com/opendatacube/datacube-core/pull/2514
+
+The Open Data Cube Steering Council acknowledges the ongoing support and contributions to this release from
+RISE and Geoscience Australia.
+
+**Full Changelog**: https://github.com/opendatacube/datacube-core/compare/1.9.20...1.9.21
+
+1.9.20 (28 May 2026)
+====================
+
+New features:
+
+* Support for a new `db_query_timeout` parameter
+* New lineage API methods for more efficient querying of basic lineage information in legacy index drivers.
+
+What's Changed
+--------------
+
+* CI: use more cores for MyPy by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2492
+* Use raw SQL Alchemy connection in add column tests by @SpacemanPaul in https://github.com/opendatacube/datacube-core/pull/2493
+* tests: remove noqa by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2494
+* New query timeout option by @SpacemanPaul in https://github.com/opendatacube/datacube-core/pull/2486
+* Enhance Lineage API by @SpacemanPaul in https://github.com/opendatacube/datacube-core/pull/2496
+* Improve dataset search queries error handling by @Ariana-B in https://github.com/opendatacube/datacube-core/pull/2485
+* Prepare for 1.9.20 release by @SpacemanPaul in https://github.com/opendatacube/datacube-core/pull/2499
+
+Automated Updates
+-----------------
+
+* build(deps): bump github/codeql-action from 4.35.3 to 4.35.4 in the actions-deps group by @dependabot[bot] in https://github.com/opendatacube/datacube-core/pull/2489
+* build(deps): bump astral-sh/uv from 0.11.14 to 0.11.15 in /docker by @dependabot[bot] in https://github.com/opendatacube/datacube-core/pull/2490
+* build(deps): bump astral-sh/uv from 0.11.15 to 0.11.16 in /docker by @dependabot[bot] in https://github.com/opendatacube/datacube-core/pull/2495
+* [pre-commit.ci] pre-commit autoupdate by @pre-commit-ci[bot] in https://github.com/opendatacube/datacube-core/pull/2497
+* build(deps): bump github/codeql-action from 4.35.4 to 4.35.5 in the actions-deps group by @dependabot[bot] in https://github.com/opendatacube/datacube-core/pull/2498
+
+**Full Changelog**: https://github.com/opendatacube/datacube-core/compare/1.9.19...1.9.20
+
+The Open Data Cube Steering Council thanks and acknowledges RISE and Geoscience Australia
+for their contributions to this release and ongoing support of the project.
+
+1.9.19 (19 May 2026)
+======================
+
+Regular release with some query functionality enhancements, improved error handling
+and an update of the Docker image to GDAL 3.13.0.
+
+What's Changed
+--------------
+
+Significant Changes
+^^^^^^^^^^^^^^^^^^^
+
+* Deprecate virtual products by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2456
+* docs: fix docutils warnings by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2457
+* docs: avoid double publishing by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2458
+* docs: fail on warnings by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2459
+* click: catch IndexSetupError by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2460
+* Add `--query` option to dataset archive cli command by @Ariana-B in https://github.com/opendatacube/datacube-core/pull/2463
+* Dockerfile: update to GDAL 3.13.0 by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2476
+* Fix Not expression handling in dataset search by @Ariana-B in https://github.com/opendatacube/datacube-core/pull/2477
+* [docs] Fix cheatsheet PDF link, include external images in repo by @omad in https://github.com/opendatacube/datacube-core/pull/2484
+* Prepare for 1.9.19 release by @SpacemanPaul in https://github.com/opendatacube/datacube-core/pull/2488
+
+Automated Updates
+^^^^^^^^^^^^^^^^^
+
+* [pre-commit.ci] pre-commit autoupdate by @pre-commit-ci[bot] in https://github.com/opendatacube/datacube-core/pull/2461
+* build(deps): bump the actions-deps group with 2 updates by @dependabot[bot] in https://github.com/opendatacube/datacube-core/pull/2462
+* build(deps): bump osgeo/gdal from ubuntu-full-3.12.3 to ubuntu-full-3.12.4 in /docker by @dependabot[bot] in https://github.com/opendatacube/datacube-core/pull/2464
+* [pre-commit.ci] pre-commit autoupdate by @pre-commit-ci[bot] in https://github.com/opendatacube/datacube-core/pull/2465
+* build(deps): bump astral-sh/uv from 0.11.7 to 0.11.8 in /docker by @dependabot[bot] in https://github.com/opendatacube/datacube-core/pull/2466
+* build(deps): bump the actions-deps group with 3 updates by @dependabot[bot] in https://github.com/opendatacube/datacube-core/pull/2467
+* build(deps): bump aquasecurity/trivy-action from 0.35.0 to 0.36.0 in the actions-deps group by @dependabot[bot] in https://github.com/opendatacube/datacube-core/pull/2469
+* [pre-commit.ci] pre-commit autoupdate by @pre-commit-ci[bot] in https://github.com/opendatacube/datacube-core/pull/2468
+* build(deps): bump astral-sh/uv from 0.11.8 to 0.11.10 in /docker by @dependabot[bot] in https://github.com/opendatacube/datacube-core/pull/2470
+* build(deps): bump astral-sh/uv from 0.11.10 to 0.11.11 in /docker by @dependabot[bot] in https://github.com/opendatacube/datacube-core/pull/2471
+* build(deps): bump mistune from 3.2.0 to 3.2.1 by @dependabot[bot] in https://github.com/opendatacube/datacube-core/pull/2472
+* build(deps): bump mako from 1.3.11 to 1.3.12 by @dependabot[bot] in https://github.com/opendatacube/datacube-core/pull/2473
+* build(deps): bump astral-sh/uv from 0.11.11 to 0.11.12 in /docker by @dependabot[bot] in https://github.com/opendatacube/datacube-core/pull/2474
+* build(deps): bump urllib3 from 2.6.3 to 2.7.0 by @dependabot[bot] in https://github.com/opendatacube/datacube-core/pull/2479
+* [pre-commit.ci] pre-commit autoupdate by @pre-commit-ci[bot] in https://github.com/opendatacube/datacube-core/pull/2478
+* build(deps): bump astral-sh/uv from 0.11.12 to 0.11.13 in /docker by @dependabot[bot] in https://github.com/opendatacube/datacube-core/pull/2480
+* build(deps): bump github/codeql-action from 4.35.2 to 4.35.3 in the actions-deps group by @dependabot[bot] in https://github.com/opendatacube/datacube-core/pull/2481
+* build(deps): bump astral-sh/uv from 0.11.13 to 0.11.14 in /docker by @dependabot[bot] in https://github.com/opendatacube/datacube-core/pull/2482
+* [pre-commit.ci] pre-commit autoupdate by @pre-commit-ci[bot] in https://github.com/opendatacube/datacube-core/pull/2487
+
+**Full Changelog**: https://github.com/opendatacube/datacube-core/compare/1.9.18...1.9.19
+
+The Open Data Cube Steering Council thanks and acknowledges RISE, Geoscience Australia and CSIRO
+for their contributions to this release and ongoing support of the project.
+
+
+1.9.18 (16 April 2026)
+======================
+
+Includes functional and performance improvements to indexing, especially from STAC.
+
+What's Changed
+--------------
+
+Significant Changes
+^^^^^^^^^^^^^^^^^^^
+
+* index: align bulk_add and add API by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2393
+* dataset: use bulk-add for Postgis by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2403
+* dataset: add a --workers parameter by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2409
+* Add orjson extra by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2411
+* drivers/postgis: grant odc_manage permissions by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2413
+* stacconverter: best effort raster bands by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2402
+* user: add --passwd-stdin by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2416
+* Preparations for storing lineage data when indexing from STAC files by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2444
+* Store lineage data when indexing from STAC by @SpacemanPaul in https://github.com/opendatacube/datacube-core/pull/2443
+
+Minor Changes/Maintenance/Cleanup
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+* test_eo3converter: remove hardcoded strings by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2401
+* Replace custom cached_property with stdlib by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2406
+* drivers/postgres: improve type signature by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2405
+* click: stop catching KeyboardInterrupt by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2404
+* tests: run in single time zone by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2415
+* pyproject: restrict setuptools-scm < 10 by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2420
+* tests: test CLI input validation by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2417
+* testutils/geom: call odc-geo instead by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2419
+* drivers/common_psql: share more code by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2423
+* metadata: stop showing backtraces by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2422
+* opt: ensure URL can be parsed by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2425
+* Postgis driver: Always use "as_role" for controlling active role. by @SpacemanPaul in https://github.com/opendatacube/datacube-core/pull/2410
+* pyproject: disable orjson optional by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2433
+* click: catch NoIndexError by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2435
+* Add more type signatures by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2434
+* docs: fix rst formatting by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2442
+* Use TYPE_CHECKING block for types by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2441
+* pyproject: remove unused attrs by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2449
+* pyproject: remove unused cloudpickle by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2450
+* pyproject: remove unused ruamel.yaml by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2451
+* Remove GDAL 2.x support by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2452
+* CI: stop persisting credentials by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2453
+* Prepare for 1.9.18 release by @SpacemanPaul in https://github.com/opendatacube/datacube-core/pull/2455
+
+Automated Updates
+^^^^^^^^^^^^^^^^^
+
+* build(deps): bump astral-sh/uv from 0.10.10 to 0.10.11 in /docker by @dependabot[bot] in https://github.com/opendatacube/datacube-core/pull/2400
+* build(deps): bump astral-sh/uv from 0.10.11 to 0.10.12 in /docker by @dependabot[bot] in https://github.com/opendatacube/datacube-core/pull/2407
+* build(deps): bump osgeo/gdal from ubuntu-full-3.12.2 to ubuntu-full-3.12.3 in /docker by @dependabot[bot] in https://github.com/opendatacube/datacube-core/pull/2408
+* [pre-commit.ci] pre-commit autoupdate by @pre-commit-ci[bot] in https://github.com/opendatacube/datacube-core/pull/2412
+* build(deps): bump astral-sh/uv from 0.10.12 to 0.11.0 in /docker by @dependabot[bot] in https://github.com/opendatacube/datacube-core/pull/2414
+* build(deps): bump astral-sh/uv from 0.11.0 to 0.11.1 in /docker by @dependabot[bot] in https://github.com/opendatacube/datacube-core/pull/2418
+* build(deps): bump requests from 2.32.5 to 2.33.0 by @dependabot[bot] in https://github.com/opendatacube/datacube-core/pull/2421
+* build(deps): bump astral-sh/uv from 0.11.1 to 0.11.2 in /docker by @dependabot[bot] in https://github.com/opendatacube/datacube-core/pull/2424
+* build(deps): bump cryptography from 46.0.5 to 46.0.6 by @dependabot[bot] in https://github.com/opendatacube/datacube-core/pull/2426
+* build(deps): bump actions/cache from 5.0.3 to 5.0.4 in the actions-deps group by @dependabot[bot] in https://github.com/opendatacube/datacube-core/pull/2429
+* ci(mergify): upgrade configuration to current format by @mergify[bot] in https://github.com/opendatacube/datacube-core/pull/2431
+* build(deps): bump astral-sh/uv from 0.11.2 to 0.11.3 in /docker by @dependabot[bot] in https://github.com/opendatacube/datacube-core/pull/2432
+* [pre-commit.ci] pre-commit autoupdate by @pre-commit-ci[bot] in https://github.com/opendatacube/datacube-core/pull/2436
+* build(deps): bump the actions-deps group with 2 updates by @dependabot[bot] in https://github.com/opendatacube/datacube-core/pull/2437
+* build(deps): bump astral-sh/uv from 0.11.3 to 0.11.5 in /docker by @dependabot[bot] in https://github.com/opendatacube/datacube-core/pull/2439
+* build(deps): bump cryptography from 46.0.6 to 46.0.7 by @dependabot[bot] in https://github.com/opendatacube/datacube-core/pull/2438
+* build(deps): bump astral-sh/uv from 0.11.5 to 0.11.6 in /docker by @dependabot[bot] in https://github.com/opendatacube/datacube-core/pull/2440
+* [pre-commit.ci] pre-commit autoupdate by @pre-commit-ci[bot] in https://github.com/opendatacube/datacube-core/pull/2445
+* build(deps): bump astral-sh/setup-uv from 7.5.0 to 8.0.0 in the actions-deps group by @dependabot[bot] in https://github.com/opendatacube/datacube-core/pull/2446
+* build(deps): bump pillow from 12.1.1 to 12.2.0 by @dependabot[bot] in https://github.com/opendatacube/datacube-core/pull/2447
+* build(deps-dev): bump pytest from 9.0.2 to 9.0.3 by @dependabot[bot] in https://github.com/opendatacube/datacube-core/pull/2448
+* build(deps): bump astral-sh/uv from 0.11.6 to 0.11.7 in /docker by @dependabot[bot] in https://github.com/opendatacube/datacube-core/pull/2454
+* [pre-commit.ci] pre-commit autoupdate by @pre-commit-ci[bot] in https://github.com/opendatacube/datacube-core/pull/2427
+* build(deps): bump pygments from 2.19.2 to 2.20.0 by @dependabot[bot] in https://github.com/opendatacube/datacube-core/pull/2428
+
+**Full Changelog**: https://github.com/opendatacube/datacube-core/compare/1.9.17...1.9.18
+
+The ODC Steering Council thanks RISE and Geoscience Australia for their ongoing support of the project.
+
+1.9.17 (17 March 2026)
+======================
+
+Emergency release to fix bug in postgres schema update script.
+
+What's Changed
+--------------
+
+* postgis: perform simple checks early by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2382
+* index/memory: avoid deprecation warnings by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2383
+* dataset: include uri in error message by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2384
+* index/abstract: remove unused variable by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2385
+* postgis: fix type error by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2387
+* index/postgis: remove debug printout by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2388
+* index/postgis: type error fixes by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2389
+* Improve some type signatures by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2390
+* drivers/postgis: fix __repr__ output by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2391
+* scripts: fix exit values by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2394
+* index: fix typo in variable name by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2397
+* Improve some more type signatures by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2395
+* drivers/postgis: be more ORM-like by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2392
+* drivers/postgres: Fix argument order in during transfer ownership upgrades by @SpacemanPaul in https://github.com/opendatacube/datacube-core/pull/2398
+* Prepare for 1.9.17 release by @SpacemanPaul in https://github.com/opendatacube/datacube-core/pull/2399
+
+Automated Updates
+-----------------
+
+* build(deps): bump astral-sh/uv from 0.10.9 to 0.10.10 in /docker by @dependabot[bot] in https://github.com/opendatacube/datacube-core/pull/2386
+* [pre-commit.ci] pre-commit autoupdate by @pre-commit-ci[bot] in https://github.com/opendatacube/datacube-core/pull/2396
+
+
+**Full Changelog**: https://github.com/opendatacube/datacube-core/compare/1.9.16...1.9.17
+
+1.9.16 (13 March 2026)
+======================
+
+Emergency release to get a few quick fixes out.
+
+What's Changed
+--------------
+
+* Handle non-UUID id strings by @Ariana-B in https://github.com/opendatacube/datacube-core/pull/2377
+* Loader compatibility tweaks by @SpacemanPaul in https://github.com/opendatacube/datacube-core/pull/2378
+* ui: show error message to user by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2375
+* testutils: share more code by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2379
+* CI: update versions of actions by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2380
+* Prepare for 1.9.16 release by @SpacemanPaul in https://github.com/opendatacube/datacube-core/pull/2381
+
+
+**Full Changelog**: https://github.com/opendatacube/datacube-core/compare/1.9.15...1.9.16
+
+1.9.15 (11 March 2026)
+========================
+
+A regular maintenance release.
+
+Includes a fix for another incompatibility between the rio and legacy load drivers.
+
+What's Changed
+--------------
+
+* Update python dependencies by @SpacemanPaul in https://github.com/opendatacube/datacube-core/pull/2344
+* pyproject.toml: tweak dependencies by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2346
+* Ruff 0.15 fixes by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2348
+* uv.lock: update to cryptography 46.0.5 by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2352
+* uv.lock: update to pillow 12.1.1 by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2353
+* uv.lock: update to werkzeug 3.1.6 by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2358
+* docs: Update old references from setup.py -> pyproject.toml by @omad in https://github.com/opendatacube/datacube-core/pull/2362
+* CI: update to latest Trivy workflow by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2368
+* Add spatial attributes to rio driver output to match legacy driver by @SpacemanPaul in https://github.com/opendatacube/datacube-core/pull/2369
+* Dockerfile: increase UV_HTTP_RETRIES by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2371
+* Prepare for 1.9.15 release by @SpacemanPaul in https://github.com/opendatacube/datacube-core/pull/2374
+
+Automated Updates
+-----------------
+
+* build(deps): bump astral-sh/uv from 0.9.29 to 0.9.30 in /docker by @dependabot[bot] in https://github.com/opendatacube/datacube-core/pull/2343
+* build(deps): bump astral-sh/uv from 0.9.30 to 0.10.0 in /docker by @dependabot[bot] in https://github.com/opendatacube/datacube-core/pull/2345
+* build(deps): bump actions/cache from 5.0.2 to 5.0.3 in the actions-deps group by @dependabot[bot] in https://github.com/opendatacube/datacube-core/pull/2349
+* [pre-commit.ci] pre-commit autoupdate by @pre-commit-ci[bot] in https://github.com/opendatacube/datacube-core/pull/2347
+* build(deps): bump astral-sh/uv from 0.10.0 to 0.10.2 in /docker by @dependabot[bot] in https://github.com/opendatacube/datacube-core/pull/2350
+* build(deps): bump osgeo/gdal from ubuntu-full-3.12.1 to ubuntu-full-3.12.2 in /docker by @dependabot[bot] in https://github.com/opendatacube/datacube-core/pull/2351
+* [pre-commit.ci] pre-commit autoupdate by @pre-commit-ci[bot] in https://github.com/opendatacube/datacube-core/pull/2354
+* build(deps): bump astral-sh/uv from 0.10.2 to 0.10.3 in /docker by @dependabot[bot] in https://github.com/opendatacube/datacube-core/pull/2355
+* build(deps): bump astral-sh/setup-uv from 7.2.0 to 7.3.0 in the actions-deps group by @dependabot[bot] in https://github.com/opendatacube/datacube-core/pull/2356
+* build(deps): bump astral-sh/uv from 0.10.3 to 0.10.4 in /docker by @dependabot[bot] in https://github.com/opendatacube/datacube-core/pull/2357
+* [pre-commit.ci] pre-commit autoupdate by @pre-commit-ci[bot] in https://github.com/opendatacube/datacube-core/pull/2359
+* build(deps): bump docker/build-push-action from 6.18.0 to 6.19.2 in the actions-deps group by @dependabot[bot] in https://github.com/opendatacube/datacube-core/pull/2360
+* build(deps): bump astral-sh/uv from 0.10.4 to 0.10.5 in /docker by @dependabot[bot] in https://github.com/opendatacube/datacube-core/pull/2361
+* build(deps): bump astral-sh/uv from 0.10.5 to 0.10.6 in /docker by @dependabot[bot] in https://github.com/opendatacube/datacube-core/pull/2363
+* build(deps): bump astral-sh/uv from 0.10.6 to 0.10.7 in /docker by @dependabot[bot] in https://github.com/opendatacube/datacube-core/pull/2364
+* [pre-commit.ci] pre-commit autoupdate by @pre-commit-ci[bot] in https://github.com/opendatacube/datacube-core/pull/2366
+* build(deps): bump astral-sh/uv from 0.10.7 to 0.10.8 in /docker by @dependabot[bot] in https://github.com/opendatacube/datacube-core/pull/2367
+* build(deps): bump astral-sh/uv from 0.10.8 to 0.10.9 in /docker by @dependabot[bot] in https://github.com/opendatacube/datacube-core/pull/2370
+* [pre-commit.ci] pre-commit autoupdate by @pre-commit-ci[bot] in https://github.com/opendatacube/datacube-core/pull/2372
+* build(deps): bump astral-sh/setup-uv from 7.3.0 to 7.3.1 in the actions-deps group by @dependabot[bot] in https://github.com/opendatacube/datacube-core/pull/2373
+
+**Full Changelog**: https://github.com/opendatacube/datacube-core/compare/1.9.14...1.9.15
+
+1.9.14 (5 February 2026)
+========================
+
+This release supports better code sharing between the postgres and postgis index drivers within the ODC, and with
+other packages in the broader ODC ecosystem that also need to do schema and user management (e.g. Explorer, OWS).
+
+Deprecations
+------------
+
+The `--no-init-users` option to `datacube system init` is now deprecated.  We now strongly recommend using
+the default user roles.
+
+Backwards incompatible changes
+------------------------------
+
+The calling signatures of ``dc.index.users.grant_role`` and ``dc.index.users.delete_user``
+in the user-resource index API have changed slightly. This is highly unlikely to affect
+system maintainers or end users.
+
+What's Changed
+--------------
+
+Contains a major refactor of PostgreSQL schema and user permissions management code and
+further improvements to backwards compatibility of driver-based loads.
+
+Significant Changes
+-------------------
+
+* Ensure table and view ownership for postgres driver. by @SpacemanPaul in https://github.com/opendatacube/datacube-core/pull/2329
+* Consolidate common postgresql code for schema and user permissions management by @SpacemanPaul in https://github.com/opendatacube/datacube-core/pull/2334
+* Ensure empty driver-based loads return a nodata Dataset by @SpacemanPaul in https://github.com/opendatacube/datacube-core/pull/2340
+* Better backwards compatibility in index users api by @SpacemanPaul in https://github.com/opendatacube/datacube-core/pull/2341
+
+Minor maintenance updates
+-------------------------
+
+* Dockerfile: fix variable name by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2336
+* uv.lock: update to distributed 2026.1.1 by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2325
+* DEP: Make scikit-image optional by @snowman2 in https://github.com/opendatacube/datacube-core/pull/2328
+* Add scikit-image to dev dependencies by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2330
+* Update fallback version and release notes for 1.9.14 by @SpacemanPaul in https://github.com/opendatacube/datacube-core/pull/2342
+
+Automated Updates
+-----------------
+
+* build(deps): bump astral-sh/uv from 0.9.25 to 0.9.26 in /docker by @dependabot[bot] in https://github.com/opendatacube/datacube-core/pull/2324
+* [pre-commit.ci] pre-commit autoupdate by @pre-commit-ci[bot] in https://github.com/opendatacube/datacube-core/pull/2326
+* build(deps): bump astral-sh/setup-uv from 7.1.6 to 7.2.0 in the actions-deps group by @dependabot[bot] in https://github.com/opendatacube/datacube-core/pull/2327
+* [pre-commit.ci] pre-commit autoupdate by @pre-commit-ci[bot] in https://github.com/opendatacube/datacube-core/pull/2331
+* build(deps): bump the actions-deps group with 2 updates by @dependabot[bot] in https://github.com/opendatacube/datacube-core/pull/2332
+* build(deps): bump astral-sh/uv from 0.9.26 to 0.9.27 in /docker by @dependabot[bot] in https://github.com/opendatacube/datacube-core/pull/2333
+* build(deps): bump astral-sh/uv from 0.9.27 to 0.9.28 in /docker by @dependabot[bot] in https://github.com/opendatacube/datacube-core/pull/2335
+* [pre-commit.ci] pre-commit autoupdate by @pre-commit-ci[bot] in https://github.com/opendatacube/datacube-core/pull/2337
+* build(deps): bump astral-sh/uv from 0.9.28 to 0.9.29 in /docker by @dependabot[bot] in https://github.com/opendatacube/datacube-core/pull/2339
+
+**Full Changelog**: https://github.com/opendatacube/datacube-core/compare/1.9.13...1.9.14
+
+Includes contributions from @pjonsson, @snowman2, and @SpacemanPaul.
+
+The Open Data Cube Steering Council gratefully acknowledges Geoscience Australia and RISE
+for supporting the work that made this release possible.
+
+
+1.9.13 (14 January 2026)
+=========================
+
+This release adds support for custom fuse functions in driver based loads.
+
+Custom fuse functions can now be set as importable strings (fully qualified Python names).
+This is required for driver based loads and will be enforced for legacy loads in a future
+release.
+
+E.g.::
+   dc.load(..., fuse_func="my_module.my_fuser")
+
+is required for driver-based loads and is now preferred for legacy loads over::
+   from my_module import my_fuser
+   dc.load(..., fuse_func=my_fuser)
+
+Please start to update your code and notebooks accordingly.
+
+Notable Changes
+---------------
+
+* Support for custom fuse functions in driver based loads.
+* Compatibility with recent releases of GDAL and rasterio.
+
+What's Changed
+--------------
+
+* Reduce asset raster ext warnings volume by @Ariana-B in https://github.com/opendatacube/datacube-core/pull/2306
+* Add scikit-image dependency by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2307
+* drivers/postgres: use right select by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2308
+* Validate JSON schema columns by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2310
+* Add ty to dev dependencies by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2309
+* Ensure truly safe loading of netcdf drivers. by @SpacemanPaul in https://github.com/opendatacube/datacube-core/pull/2305
+* Bypass rasterio/gdal compatibility issue by @SpacemanPaul in https://github.com/opendatacube/datacube-core/pull/2316
+* Clean up from resolved rasterio/gdal compatibility issues. by @SpacemanPaul in https://github.com/opendatacube/datacube-core/pull/2317
+* uv.lock: update to urllib3 2.6.3 by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2318
+* Custom fusers for driver based loads by @SpacemanPaul in https://github.com/opendatacube/datacube-core/pull/2321
+* Bump fallback version number and update whats_new.rst for 1.9.13 release in https://github.com/opendatacube/datacube-core/pull/2323
+
+Automated updates
+-----------------
+
+* build(deps): bump the actions-deps group with 2 updates by @dependabot[bot] in https://github.com/opendatacube/datacube-core/pull/2304
+* [pre-commit.ci] pre-commit autoupdate by @pre-commit-ci[bot] in https://github.com/opendatacube/datacube-core/pull/2303
+* build(deps): bump the actions-deps group with 3 updates by @dependabot[bot] in https://github.com/opendatacube/datacube-core/pull/2311
+* build(deps): bump astral-sh/uv from 0.9.18 to 0.9.20 in /docker by @dependabot[bot] in https://github.com/opendatacube/datacube-core/pull/2312
+* build(deps): bump astral-sh/uv from 0.9.20 to 0.9.21 in /docker by @dependabot[bot] in https://github.com/opendatacube/datacube-core/pull/2313
+* [pre-commit.ci] pre-commit autoupdate by @pre-commit-ci[bot] in https://github.com/opendatacube/datacube-core/pull/2314
+* build(deps): bump astral-sh/uv from 0.9.21 to 0.9.22 in /docker by @dependabot[bot] in https://github.com/opendatacube/datacube-core/pull/2315
+* build(deps): bump osgeo/gdal from ubuntu-full-3.10.3 to ubuntu-full-3.12.1 in /docker by @dependabot[bot] in https://github.com/opendatacube/datacube-core/pull/2301
+* build(deps): bump astral-sh/uv from 0.9.22 to 0.9.24 in /docker by @dependabot[bot] in https://github.com/opendatacube/datacube-core/pull/2319
+* [pre-commit.ci] pre-commit autoupdate by @pre-commit-ci[bot] in https://github.com/opendatacube/datacube-core/pull/2320
+* build(deps): bump astral-sh/uv from 0.9.24 to 0.9.25 in /docker in https://github.com/opendatacube/datacube-core/pull/2322
+
+**Full Changelog**: https://github.com/opendatacube/datacube-core/compare/1.9.12...1.9.13
+
+The Open Data Cube Steering Council thanks and acknowledges the ongoing support of Geoscience Australia, CSIRO, and RISE.
+
+1.9.12 (22 December 2025)
+=========================
+
+Notable Changes
+---------------
+
+* Support for direct indexing of STAC items with ``datacube dataset add``.  STAC documents are converted to EO3
+  before being indexed.
+* The previous release (1.9.11) included a database schema upgrade for the postgis index driver and refused to operate
+  if the upgrade was not applied. This was unnecessarily strict and caused deployment issues in complicated
+  environments.  v1.9.12 works with databases both with and without the upgrade.  (The upgrade is now treated as
+  recommended, not required, and can safely be held back until only core versions >=1.9.12 are deployed.
+* v1.9.12 works with odc-loader >=0.6.0, which included an internal API change.
+* Multi-polygon extent geometries in EO3 documents are now supported.
+* Better error reporting and less confusing and fewer unnecessary warning messages.
+
+What's Changed
+--------------
+
+* Validate Product measurement nodata type by @Ariana-B in https://github.com/opendatacube/datacube-core/pull/2277
+* CI: do not fail fast by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2279
+* Add RasterExtension to STAC conversion by @Ariana-B in https://github.com/opendatacube/datacube-core/pull/2281
+* uv.lock: update to urllib3 2.6.0 by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2284
+* dependabot: add 10 day cooldown by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2285
+* postgis: catch alembic key error by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2283
+* Suppress driver warnings on optional dependencies (e.g. netcdf). by @SpacemanPaul in https://github.com/opendatacube/datacube-core/pull/2288
+* Revert "postgis: catch alembic key error" by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2289
+* Update dependencies to Rasterio 1.4.4 by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2291
+* Loader 0.6 support by @SpacemanPaul in https://github.com/opendatacube/datacube-core/pull/2292
+* Add support for MultiPolygon geometry by @Ariana-B in https://github.com/opendatacube/datacube-core/pull/2297
+* Handle compatible database versions by @SpacemanPaul in https://github.com/opendatacube/datacube-core/pull/2296
+* Restrict antimeridian < 0.4.5 by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2300
+* Native STAC indexing by @Ariana-B in https://github.com/opendatacube/datacube-core/pull/2298
+* Update fallback version and release notes for 1.9.12 release by @SpacemanPaul in https://github.com/opendatacube/datacube-core/pull/2298
+
+Automated updates
+-----------------
+
+* build(deps): bump astral-sh/uv from 0.9.14 to 0.9.15 in /docker by @dependabot[bot] in https://github.com/opendatacube/datacube-core/pull/2280
+* build(deps): bump astral-sh/uv from 0.9.15 to 0.9.16 in /docker by @dependabot[bot] in https://github.com/opendatacube/datacube-core/pull/2286
+* [pre-commit.ci] pre-commit autoupdate by @pre-commit-ci[bot] in https://github.com/opendatacube/datacube-core/pull/2287
+* build(deps): bump astral-sh/uv from 0.9.16 to 0.9.17 in /docker by @dependabot[bot] in https://github.com/opendatacube/datacube-core/pull/2290
+* [pre-commit.ci] pre-commit autoupdate by @pre-commit-ci[bot] in https://github.com/opendatacube/datacube-core/pull/2293
+* build(deps): bump actions/checkout from 6.0.0 to 6.0.1 in the actions-deps group by @dependabot[bot] in https://github.com/opendatacube/datacube-core/pull/2294
+* build(deps): bump astral-sh/uv from 0.9.17 to 0.9.18 in /docker by @dependabot[bot] in https://github.com/opendatacube/datacube-core/pull/2295
+
+
+**Full Changelog**: https://github.com/opendatacube/datacube-core/compare/1.9.11...1.9.12
+
+The Open Data Cube Steering Council thanks and acknowledges the ongoing support of Geoscience Australia, CSIRO, and RISE.
+
+v1.9.11 (4 December 2025)
+=========================
+
+* cleanup of database schema and permissions management, especially in postgis driver (See **Schema Update** section below) (@SpacemanPaul)
+* support for upgrading some (most?) EO datasets to EO3 (@Ariana-B)
+* support for relative paths in STAC catalogs (@pjonsson)
+* and the usual minor tweaks, (@pjonsson and @snowman2)
+
+
+Schema Update
+-------------
+
+Users of the postgis index driver will need to upgrade their database schema on upgrade to 1.9.11
+
+This will require an ODC environment with database superuser privileges.  E.g.::
+
+   export ODC_DEFAULT_DB_URL=postgresql://postgres:/my_db
+   export ODC_DEFAULT_INDEX_DRIVER=postgis
+   datacube system init
+   unset ODC_DEFAULT_DB_URL ODC_DEFAULT_DB_URL
+
+This schema migration doesn't change any tables - it simply sets the owner of all dynamically
+created index tables to the ``odc_admin`` role.
+
+After this schema migration is applied, all future schema management will require only the ``odc_admin`` role,
+and superuser privileges will only be required to create the postgis extension when first creating a database
+index.
+
+What's Changed
+--------------
+
+* Update fallback version by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2216
+* CI: fetch tags for release by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2217
+* Dockerfile: install psql 18 by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2222
+* Convert EO datasets and products to EO3 by @Ariana-B in https://github.com/opendatacube/datacube-core/pull/2179
+* postgis: create spatial_* as odc_admin by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2224
+* Update eo-datasets repo URL by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2225
+* Update to latest JSON schema version by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2226
+* Various minor cleanups by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2227
+* metadata-type-schema: improve validation by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2228
+* docs: update odc-apps-dc-tools link by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2231
+* Remove --confirm-ignore-lineage by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2232
+* docs: Fix `make clean` errors by @omad in https://github.com/opendatacube/datacube-core/pull/2234
+* docs: Fix Build Warnings - Don't double publish the same API autosummary methods/classes by @omad in https://github.com/opendatacube/datacube-core/pull/2235
+* readthedocs: fix uv link warning by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2237
+* docs: remove double word by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2238
+* postgis: remove leftover debug log by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2242
+* dataset: fix parameter help by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2243
+* dataset: only confirm without --all by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2244
+* Cleanup of database user and permission management in postgis driver by @SpacemanPaul in https://github.com/opendatacube/datacube-core/pull/2245
+* Update to latest Sphinx by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2248
+* Dockerfile: pin image by hash by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2250
+* cli: cleanup dataset add command by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2253
+* cli: return failure from dataset update command by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2254
+* hl: simplify type signature by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2255
+* PERF: Statically import parse_datetime by @snowman2 in https://github.com/opendatacube/datacube-core/pull/2257
+* CI: use anchors for paths by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2258
+* postgis: fix comment typo by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2262
+* eo3converter: pass along asset_absolute_paths by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2264
+* drivers: add/fix type signatures by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2266
+* postgis: fix search parameters by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2267
+* Cleanup user role granting by @SpacemanPaul in https://github.com/opendatacube/datacube-core/pull/2268
+* Fix status badge links by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2273
+* Bump fallback version and update whats_new.rst for 1.9.11 release @SpacemanPaul in https://github.com/opendatacube/datacube-core/pull/2278
+
+Automated updates
+-----------------
+
+* [pre-commit.ci] pre-commit autoupdate by @pre-commit-ci[bot] in https://github.com/opendatacube/datacube-core/pull/2221
+* build(deps): bump astral-sh/uv from 0.9.4 to 0.9.5 in /docker by @dependabot[bot] in https://github.com/opendatacube/datacube-core/pull/2218
+* build(deps): bump the actions-deps group with 2 updates by @dependabot[bot] in https://github.com/opendatacube/datacube-core/pull/2223
+* build(deps): bump astral-sh/uv from 0.9.5 to 0.9.6 in /docker by @dependabot[bot] in https://github.com/opendatacube/datacube-core/pull/2229
+* build(deps): bump astral-sh/uv from 0.9.6 to 0.9.7 in /docker by @dependabot[bot] in https://github.com/opendatacube/datacube-core/pull/2233
+* [pre-commit.ci] pre-commit autoupdate by @pre-commit-ci[bot] in https://github.com/opendatacube/datacube-core/pull/2239
+* build(deps): bump github/codeql-action from 4.31.0 to 4.31.2 in the actions-deps group by @dependabot[bot] in https://github.com/opendatacube/datacube-core/pull/2240
+* build(deps): bump astral-sh/uv from 0.9.7 to 0.9.8 in /docker by @dependabot[bot] in https://github.com/opendatacube/datacube-core/pull/2249
+* [pre-commit.ci] pre-commit autoupdate by @pre-commit-ci[bot] in https://github.com/opendatacube/datacube-core/pull/2251
+* build(deps): bump astral-sh/setup-uv from 7.1.2 to 7.1.3 in the actions-deps group by @dependabot[bot] in https://github.com/opendatacube/datacube-core/pull/2252
+* build(deps): bump astral-sh/uv from 0.9.8 to 0.9.9 in /docker by @dependabot[bot] in https://github.com/opendatacube/datacube-core/pull/2256
+* [pre-commit.ci] pre-commit autoupdate by @pre-commit-ci[bot] in https://github.com/opendatacube/datacube-core/pull/2259
+* build(deps): bump the actions-deps group with 2 updates by @dependabot[bot] in https://github.com/opendatacube/datacube-core/pull/2260
+* build(deps): bump astral-sh/uv from 0.9.9 to 0.9.10 in /docker by @dependabot[bot] in https://github.com/opendatacube/datacube-core/pull/2261
+* build(deps): bump astral-sh/uv from 0.9.10 to 0.9.11 in /docker by @dependabot[bot] in https://github.com/opendatacube/datacube-core/pull/2263
+* [pre-commit.ci] pre-commit autoupdate by @pre-commit-ci[bot] in https://github.com/opendatacube/datacube-core/pull/2269
+* build(deps): bump the actions-deps group with 3 updates by @dependabot[bot] in https://github.com/opendatacube/datacube-core/pull/2270
+* build(deps): bump astral-sh/uv from 0.9.11 to 0.9.12 in /docker by @dependabot[bot] in https://github.com/opendatacube/datacube-core/pull/2271
+* build(deps): bump astral-sh/uv from 0.9.12 to 0.9.13 in /docker by @dependabot[bot] in https://github.com/opendatacube/datacube-core/pull/2272
+* [pre-commit.ci] pre-commit autoupdate by @pre-commit-ci[bot] in https://github.com/opendatacube/datacube-core/pull/2274
+* build(deps): bump github/codeql-action from 4.31.5 to 4.31.6 in the actions-deps group by @dependabot[bot] in https://github.com/opendatacube/datacube-core/pull/2275
+* build(deps): bump astral-sh/uv from 0.9.13 to 0.9.14 in /docker by @dependabot[bot] in https://github.com/opendatacube/datacube-core/pull/2276
+
+**Full Changelog**: https://github.com/opendatacube/datacube-core/compare/1.9.10...1.9.11
+
+The Open Data Cube Steering Council thanks and acknowledges the ongoing support of Geoscience Australia, CSIRO, and RISE.
+
+
+v1.9.10 (21 October 2025)
+=========================
+
+This release fixes issues with the load function and resolves an incompatibility with odc-geo reprojection. It
+also introduces initial psycopg3 support, migrates some functionality from odc-tools, and includes cleanup to
+code, tests, docs, and CI setup.
+
+What's Changed
+--------------
+
+* Group dependabot updates to GHA Actions Versions by @omad in https://github.com/opendatacube/datacube-core/pull/2164
+* storage: rework function for MyPy by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2158
+* pytest: output test times by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2165
+* storage: move num2numpy call by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2157
+* product: add missing space by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2166
+* tests: always import boto3/moto by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2159
+* Add more type signatures by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2154
+* Fix docs rendering on configuration page by @omad in https://github.com/opendatacube/datacube-core/pull/2167
+* drivers: remove SQLAlchemy 1.4 workaround by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2168
+* drivers: use has_schema method by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2172
+* CI: speed up Conda workflows by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2169
+* Update fallback version by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2170
+* Add experimental psycopg3 support by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2120
+* drivers: deprecate drop_db function by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2174
+* Migrate code from odc-cloud: Sync AWS Functions by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2175
+* Migrate code from odc-io modules by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2176
+* Tests: Speed up eo3converter test by mocking AWS services by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2177
+* Miscellaneous docs and pre-commit fixes by @omad in https://github.com/opendatacube/datacube-core/pull/2180
+* Update Ruff version in pre-commit by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2184
+* Remove f-strings without placeholders by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2185
+* Reduce product.grid_spec warning volume by @Ariana-B in https://github.com/opendatacube/datacube-core/pull/2191
+* Make dateutil an optional dependency by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2199
+* CI: remove pyspell job by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2201
+* CI: stop building with Conda by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2200
+* drivers: use SQLAlchemy inspector by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2195
+* tests: test with single time zone by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2194
+* Revert "Make dateutil an optional dependency" by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2206
+* Pass Exception to error callback by @Ariana-B in https://github.com/opendatacube/datacube-core/pull/2208
+* tests: include error message for cli by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2211
+* Resolve unexpected load behaviours by @Ariana-B in https://github.com/opendatacube/datacube-core/pull/2192
+* Dockerfile: update to latest uv by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2212
+* Resolve virtual product odc-geo reprojection incompatibility by @Ariana-B in https://github.com/opendatacube/datacube-core/pull/2202
+
+Automated Updates
+-----------------
+
+* https://github.com/opendatacube/datacube-core/pull/2161
+* https://github.com/opendatacube/datacube-core/pull/2162
+* https://github.com/opendatacube/datacube-core/pull/2163
+* https://github.com/opendatacube/datacube-core/pull/2171
+* https://github.com/opendatacube/datacube-core/pull/2173
+* https://github.com/opendatacube/datacube-core/pull/2182
+* https://github.com/opendatacube/datacube-core/pull/2181
+* https://github.com/opendatacube/datacube-core/pull/2197
+* https://github.com/opendatacube/datacube-core/pull/2198
+* https://github.com/opendatacube/datacube-core/pull/2203
+* https://github.com/opendatacube/datacube-core/pull/2204
+* https://github.com/opendatacube/datacube-core/pull/2209
+* https://github.com/opendatacube/datacube-core/pull/2210
+* https://github.com/opendatacube/datacube-core/pull/2214
+* https://github.com/opendatacube/datacube-core/pull/2215
+* https://github.com/opendatacube/datacube-core/pull/2213
+
+Full Changelog: https://github.com/opendatacube/datacube-core/compare/1.9.9...1.9.10
+
+Includes contributions from @pjonsson, @omad, and @Ariana-B
+
+The Open Data Cube Steering Council thanks and acknowledges the ongoing support of Geoscience Australia, CSIRO, and RISE.
+
+v1.9.9 (2 September 2025)
+=========================
+
+his release includes more fixes and improvements to STAC/EO3 conversion, documentation updates, and various code,
+testing, and CI cleanup.
+
+What's Changed
+--------------
+
+*  CI: make twine check strict by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2133
+*  Tutorial for odc-stac by @caitlinadams in https://github.com/opendatacube/datacube-core/pull/2055
+*  Add cyprus datacube by @whatnick in https://github.com/opendatacube/datacube-core/pull/2092
+*  Add some more type signatures by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2128
+*  cli: use UUID for dataset IDs by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2131
+*  index: use dsid_to_uuid function by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2132
+*  drivers: pass regular parameters by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2134
+*  drivers: set preserve_rowcount by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2135
+*  lineage: add type annotation by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2136
+*  Replace the automatic spell checker tool. by @omad in https://github.com/opendatacube/datacube-core/pull/2097
+*  test_config_docs: remove Python 2 support by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2139
+*  STAC/EO3 conversion improvements by @Ariana-B in https://github.com/opendatacube/datacube-core/pull/2146
+*  MANIFEST.in: graft model/schemas by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2148
+*  More STAC/EO3 logic fixes by @Ariana-B in https://github.com/opendatacube/datacube-core/pull/2150
+*  test_search_eo3: expect right type by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2138
+*  postgis: validate doc definition by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2141
+*  test_config_tool: enable test for postgis by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2140
+*  documents: add parse_doc_stream by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2147
+*  Use stacklevel on warnings to expose their call site and make sure they're displayed by @omad in https://github.com/opendatacube/datacube-core/pull/2151
+*  postgis: use parse_time for dates by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2152
+*  Add some type annotations by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2153
+*  Tweak STAC link handling by @Ariana-B in https://github.com/opendatacube/datacube-core/pull/2156
+
+Automated Updates
+-----------------
+
+* https://github.com/opendatacube/datacube-core/pull/2137
+* https://github.com/opendatacube/datacube-core/pull/2144
+* https://github.com/opendatacube/datacube-core/pull/2143
+* https://github.com/opendatacube/datacube-core/pull/2142
+* https://github.com/opendatacube/datacube-core/pull/2155
+
+Full Changelog: https://github.com/opendatacube/datacube-core/compare/1.9.8...1.9.9
+
+Includes contributions from @pjonsson, @omad, @caitlinadams, @whatnick, and @Ariana-B
+
+The Open Data Cube Steering Council thanks and acknowledges the ongoing support of Geoscience Australia, CSIRO, and RISE.
+
+v1.9.8 (22 August 2025)
+=======================
+
+This release improves upon the STAC to EO3 conversion logic, and moves EO3 to STAC conversion code out of
+eo-datasets into datacube-core as the next step in the ongoing cross-repo consolidation and refactor of STAC
+handling logic.
+
+It also contains some code improvements and cleanup.
+
+What's Changed
+--------------
+
+*  Update broken installation docs. by @SpacemanPaul in https://github.com/opendatacube/datacube-core/pull/2091
+*  CI: fixate time stamp for image layers (reproducible docker builds) by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2094
+*  Fix some typos by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2098
+*  Dockerfile: upgrade to uv 0.8.6 by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2102
+*  ruff: format code in doc strings by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2096
+*  fields: type check field names by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2100
+*  model: give Range types by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2101
+*  testutils: adjust for type checker by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2112
+*  model: give Not a type by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2103
+*  Add/fix more type annotations by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2110
+*  query: fail when center_time is None by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2111
+*  Use datetime instead of dateutil by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2114
+*  tests: fix faulty path by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2117
+*  docs: remove requirements.txt by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2115
+*  opt: fix error printout by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2118
+*  postgis: remove type ignores by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2121
+*  Fix some lint issues by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2125
+*  query_group_by: improve type signature by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2119
+*  Enable more lint rules by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2105
+*  Make handling of coords in create_storage backwards compatible by @Ariana-B in https://github.com/opendatacube/datacube-core/pull/2126
+*  postgis: tweak type signatures by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2129
+*  Consolidate stac/eo3 conversion logic by @Ariana-B in https://github.com/opendatacube/datacube-core/pull/2077
+*  Fix pre-commit errors by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2130
+
+Automated updates
+-----------------
+
+* https://github.com/opendatacube/datacube-core/pull/2095
+* https://github.com/opendatacube/datacube-core/pull/2104,
+* https://github.com/opendatacube/datacube-core/pull/2106
+* https://github.com/opendatacube/datacube-core/pull/2107
+* https://github.com/opendatacube/datacube-core/pull/2108
+* https://github.com/opendatacube/datacube-core/pull/2109
+* https://github.com/opendatacube/datacube-core/pull/2122
+* https://github.com/opendatacube/datacube-core/pull/2123
+* https://github.com/opendatacube/datacube-core/pull/2124
+
+Full Changelog: https://github.com/opendatacube/datacube-core/compare/1.9.7...1.9.8
+
+Includes contributions from @SpacemanPaul, @pjonsson, and @Ariana-B
+
+The Open Data Cube Steering Council thanks and acknowledges the ongoing support of Geoscience Australia and RISE.
+
+v1.9.7 (5 August 2025)
+======================
+
+This release includes a fix for a critical bug affecting dask loading and the postgis index driver.
+
+What's Changed
+--------------
+
+* Fix spell check by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2033
+* eo3: fix type error by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2031
+* cog: unnest and align logic by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2034
+* Enable flake8-simplify rules by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2035
+* search_tool: fix some types by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2036
+* Fix type checker errors by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2037
+* [pre-commit.ci] pre-commit autoupdate by @pre-commit-ci[bot] in https://github.com/opendatacube/datacube-core/pull/2043
+* Handle list type resolution by @Ariana-B in https://github.com/opendatacube/datacube-core/pull/2039
+* Fix type checker errors by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2042
+* validate_document: add type annotations by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2041
+* BandInfo: deprecate unused 3D parameter by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2040
+* Restrict to sphinx-tabs 3.4.5 by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2046
+* docs: add missing index by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2047
+* tests: test legacy resolution by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2050
+* Dockerfile: set UV_LINK_MODE by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2051
+* CI: pin image by hash by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2048
+* Relax click requirement by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2052
+* Extend and integrate `native_load` by @emmaai in https://github.com/opendatacube/datacube-core/pull/2053
+* Enable more lint rules by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2056
+* Revert "Restrict to sphinx-tabs 3.4.5" by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2057
+* [pre-commit.ci] pre-commit autoupdate by @pre-commit-ci[bot] in https://github.com/opendatacube/datacube-core/pull/2063
+* Fix type checker errors by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2062
+* xarray_geoextensions: add space in warning by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2060
+* CI: check right file in pre-commit by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2064
+* pylint: remove reports parameter by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2061
+* Require setuptools_scm >= 8 by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2065
+* testutils: fix nodata behavior by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2049
+* CI: shorten job timeout by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2066
+* readthedocs: remove extra_requirements by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2067
+* [pre-commit.ci] pre-commit autoupdate by @pre-commit-ci[bot] in https://github.com/opendatacube/datacube-core/pull/2070
+* build(deps): bump github/codeql-action from 3.29.2 to 3.29.4 by @dependabot[bot] in https://github.com/opendatacube/datacube-core/pull/2072
+* build(deps): bump astral-sh/setup-uv from 6.3.1 to 6.4.3 by @dependabot[bot] in https://github.com/opendatacube/datacube-core/pull/2073
+* Typecheck tests in CI by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2071
+* CI: run code coverage earlier by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2076
+* docs: introduce docs/source directory by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2068
+* docs: build with uv by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2082
+* create_storage: change parameter type by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2078
+* Various type signature adjustments by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2079
+* dockerignore: update with more patterns by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2084
+* docs: autogenerate version by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2085
+* pre-commit: update ruff hook name by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2086
+* CI: use OIDC for codecov by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2088
+* [pre-commit.ci] pre-commit autoupdate by @pre-commit-ci[bot] in https://github.com/opendatacube/datacube-core/pull/2089
+* Ensure MetadataType  models can always be pickled to support Dask loading by @SpacemanPaul in https://github.com/opendatacube/datacube-core/pull/2083
+* Make configure_s3_access driver aware by @SpacemanPaul in https://github.com/opendatacube/datacube-core/pull/2087
+* Prepare for 1.9.7 release by @SpacemanPaul in https://github.com/opendatacube/datacube-core/pull/2090
+
+**Full Changelog**: https://github.com/opendatacube/datacube-core/compare/1.9.6...1.9.7
+
+Includes contributions from @pjonsson, @SpacemanPaul, @emmaai and @Ariana-B
+
+The Open Data Cube Steering Council thanks and acknowledges the ongoing support of
+Geoscience Australia and RISE.
+
+v1.9.6 (11 July 2025)
+=====================
+
+This release brings ``odc-stac`` in as a direct dependency of ``datacube-core`` and moves some STAC to EO3
+conversion code out of odc-stac into core as the first step in an organisation-wide cross-repo consolidation and
+refactor of STAC handling code and in preparation for more native support of STAC metadata within core.
+
+It also contains some enhancements to CLI commands, bug fixes and cleanup.
+
+What's Changed
+--------------
+
+* build(deps): bump the python-deps group with 15 updates by @dependabot[bot] in https://github.com/opendatacube/datacube-core/pull/1969
+* examples: fix function signatures by @pjonsson in https://github.com/opendatacube/datacube-core/pull/1972
+* examples: remove unimplemented zeros by @pjonsson in https://github.com/opendatacube/datacube-core/pull/1974
+* docs: remove broken link by @pjonsson in https://github.com/opendatacube/datacube-core/pull/1973
+* examples/tests: fix dependencies by @pjonsson in https://github.com/opendatacube/datacube-core/pull/1975
+* docs: escape trailing underscores by @pjonsson in https://github.com/opendatacube/datacube-core/pull/1976
+* docs: miscellaneous small fixes by @pjonsson in https://github.com/opendatacube/datacube-core/pull/1981
+* docs: fix links in migration document by @pjonsson in https://github.com/opendatacube/datacube-core/pull/1980
+* Add dataset count CLI command by @Ariana-B in https://github.com/opendatacube/datacube-core/pull/1963
+* Dockerfile: use uv for installation by @pjonsson in https://github.com/opendatacube/datacube-core/pull/1971
+* docs: add missing links by @pjonsson in https://github.com/opendatacube/datacube-core/pull/1978
+* PR and release process updates by @omad in https://github.com/opendatacube/datacube-core/pull/1983
+* docs: stop redefining label by @pjonsson in https://github.com/opendatacube/datacube-core/pull/1984
+* docs: make Sphinx resolve ODCEnvironment by @pjonsson in https://github.com/opendatacube/datacube-core/pull/1985
+* Put JSON type aliases in separate file by @pjonsson in https://github.com/opendatacube/datacube-core/pull/1986
+* docs: add explicit code-block by @pjonsson in https://github.com/opendatacube/datacube-core/pull/1988
+* Remove unused PY35 constant by @pjonsson in https://github.com/opendatacube/datacube-core/pull/1987
+* docs: document named tuple parameters by @pjonsson in https://github.com/opendatacube/datacube-core/pull/1977
+* [pre-commit.ci] pre-commit autoupdate by @pre-commit-ci[bot] in https://github.com/opendatacube/datacube-core/pull/1990
+* CI: run with fewer permissions by @pjonsson in https://github.com/opendatacube/datacube-core/pull/1997
+* drivers: make types more specific by @pjonsson in https://github.com/opendatacube/datacube-core/pull/1996
+* Update dependencies by @pjonsson in https://github.com/opendatacube/datacube-core/pull/1994
+* Various CLI improvements by @Ariana-B in https://github.com/opendatacube/datacube-core/pull/1993
+* cli: only read files once by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2000
+* Update to mypy 1.16.1 by @pjonsson in https://github.com/opendatacube/datacube-core/pull/1995
+* tests: fix return value checks by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2001
+* Switch decorator order to appease lint/typing by @omad in https://github.com/opendatacube/datacube-core/pull/2004
+* [pre-commit.ci] pre-commit autoupdate by @pre-commit-ci[bot] in https://github.com/opendatacube/datacube-core/pull/2007
+* Type-annotate type aliases by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2006
+* build(deps): bump igsekor/pyspelling-any from 1.0.4 to 1.0.5 by @dependabot[bot] in https://github.com/opendatacube/datacube-core/pull/2008
+* Use datetime.UTC instead of datetime.pytz() by @omad in https://github.com/opendatacube/datacube-core/pull/2010
+* Avoid Null Reference in Core by @omad in https://github.com/opendatacube/datacube-core/pull/2011
+* core: remove old assert by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2013
+* CI: test with Python 3.13 by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2015
+* CI: pin actions by hash by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2014
+* Record rasterio/gdal/etc versions from CI runs by @omad in https://github.com/opendatacube/datacube-core/pull/2017
+* Depend on odc-loader by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2019
+* Fix some type signatures by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2021
+* postgis: pass plugins parameter by @pjonsson in https://github.com/opendatacube/datacube-core/pull/2022
+* Normalise geobox inputs to Datacube api by @Ariana-B in https://github.com/opendatacube/datacube-core/pull/2018
+* [pre-commit.ci] pre-commit autoupdate by @pre-commit-ci[bot] in https://github.com/opendatacube/datacube-core/pull/2023
+* build(deps): bump aquasecurity/trivy-action from 0.31.0 to 0.32.0 by @dependabot[bot] in https://github.com/opendatacube/datacube-core/pull/2025
+* build(deps): bump conda-incubator/setup-miniconda from 3.1.1 to 3.2.0 by @dependabot[bot] in https://github.com/opendatacube/datacube-core/pull/2026
+* Depend on odc-stac, and move odc.stac.eo3 from odc-stac to datacube.metadata by @SpacemanPaul in https://github.com/opendatacube/datacube-core/pull/2027
+* Update fallback version number and whats_new.rst for 1.9.6 release by @SpacemanPaul
+
+
+**Full Changelog**: https://github.com/opendatacube/datacube-core/compare/1.9.5...1.9.6
+
+Includes contributions from @pjonsson, @Ariana-B, @omad, and @SpacemanPaul.
+
+The Open Data Cube Steering Council thanks and acknowledges the ongoing support of
+Geoscience Australia, CSIRO and RISE.
+
+
+v1.9.5 (17 June 2025)
+=====================
+
+This release introduces support for boolean type search fields, as well as a handful of bug-fixes.
+
+New feature:
+
+- Add boolean field definition (addressing issue :issue`1937`) :pull:`1949`
+
+Bug fixes:
+
+- Export grid workflow classes from datacube.api fixing issue :issue:`1953` :pull:`1958`
+- ``archive-less-mature`` runs when re-indexing datasets fixing issue :issue:`1917` :pull:`1948`
+- Serialise Measurement with canonical name to fix issue :issue:`1936` :pull:`1962`
+
+Docker image improvements:
+
+- Dockerfile: switch to ubuntu user :pull:`1964`
+- Dockerfile: let rasterio detect data path :pull:`1966`
+
+Miscellaneous code cleanup and CI improvements:
+
+- model: handle integer resolution :pull:`1967`
+- Remove types-redis dependency :pull:`1965`
+- index: add return types :pull:`1939`
+- Update dependencies :pull:`1925`
+- Run Ruff format on all code :pull:`1926`, :pull:`1927`
+- Group all dependabot updates in the 'uv' ecosystem. :pull:`1928`, :pull:`1934`
+- Move deprecated imports :pull:`1938`
+- Remove empty doc strings :pull:`1946`
+- index: fix search_by_product type :pull:`1944`
+- Put coverage config in pyproject :pull:`1942`
+- Fix alembic deprecation warning :pull:`1941`
+- Convert doc strings to type annotations :pull:`1940`, :pull:`1950`, :pull:`1951`
+- Convert doc strings to type annotations :pull:`1940`
+- Document alembic upgrades :pull:`1955`
+- postgis: stop parsing table names :pull:`1961`
+- postgis: fix alembic metadata object :pull:`1960`
+- increment fallback version and finalise release notes :pull:`1970`
+
+- Autoupdates :pull:`1919`, :pull:`1935`, :pull:`1945`, :pull:`1947`, :pull:`1956`, :pull:`1957`, :pull:`1968`
+
+Includes contributions from @pjonsson, @omad, @emmaai, @Ariana-B and @SpacemanPaul, with thanks to
+supporting organisations CSIRO, RISE and Geoscience Australia.
+
+v1.9.4 (20 May 2025)
+====================
+
+Improvements
+------------
+
+**Bring back GridWorkflow**
+
+GridWorkflow is back! It was accidentally removed with the deprecated ingestion tools as
+part of the ODC 1.9 release, since it's no longer needed internally. It is however an
+extremely useful public API for anyone running large scale data summaries and is
+used by `ODC Statistician`_.
+
+GridWorkflow has been updated to use the odc-geo_ geometry classes.
+
+See: :issue:`1749` and :pull:`1760`
+
+**Fixed Dask load crash in some cases**
+
+There was a regression in data loading with dask in Datacube 1.9. It only
+occurred in rare cases so only affected some people.
+
+The load failed whenever there were completely empty data chunks, which are
+rectangular in shape. That is, X != Y.
+
+See :pull:`1780` and :issue:`1779` for details.
+
+**Cleaning and Tidying**
+
+Massive cleaning effort across the codebase, spearheaded by @pjonsson, with a focus on:
+
+- Improvements in type annotations
+- Linting fixes
+- Code formatting and import ordering
+- Continuous integration improvements
+
+.. _odc-geo: https://odc-geo.readthedocs.io/
+.. _ODC Statistician: https://github.com/opendatacube/odc-stats
+
+Other Changes
+-------------
+
+- Use odc-geo GridSpec if `tile_shape` is in product storage information :pull:`1783`
+- SQL: fix package names type :pull:`1784`
+- Add some type signatures :pull:`1785`, :pull:`1788`, :pull:`1796`
+- Use Ruff instead of flake8 :pull:`1789`
+- tests: use set instead of list :pull:`1792`
+- users: import right index :pull:`1793`
+- postgres: use one type for fields :pull:`1795`
+- Remove executable permission on files :pull:`1797`
+- Import names from defining module :pull:`1799`
+- virtual: fix pydoc formatting :pull:`1810`
+- fields: type annotate offset parameter :pull:`1809`
+- postgis: inherit instead of decorate :pull:`1801`
+- tests: fix midnight bug :pull:`1825`
+- geometry: stop misusing constructor :pull:`1826`
+- Various lint fixes :pull:`1824`, :pull:`1838`
+- Python 3.10 updates :pull:`1839`
+- Dockerfile: stop running chown :pull:`1835`
+- postgis: update mapper dynamically :pull:`1831`
+- Dockerfile: use uv-generated constraints :pull:`1842`
+- pytest: configure in pyproject.toml :pull:`1844`
+- Remove executable permission :pull:`1846`
+- Sort imports with Ruff :pull:`1858`
+- Fix documentation parameter names :pull:`1857`, :pull:`1880`
+- Speed up AWS Utils tests :pull:`1878`
+- pyproject: set a fallback version :pull:`1887`
+- Enable flake8-comprehensions :pull:`1900`
+- model: remove old asserts :pull:`1898`
+- Ensure lock files are kept in sync with ``pyproject.toml`` dependencies. :pull:`1890`
+- Upgrade all lock files :pull:`1911`
+- core: fix type signature :pull:`1912`
+
+Dependencies
+------------
+
+- Add pandas types for development :pull:`1867`
+- tests: update to moto 5.1.4 :pull:`1821`
+- Remove pytest-timeout :pull:`1899`
+- ``compliance-checker``` is no longer a dependency :pull:`1888`, :pull:`1897`
+
+
+CI Fixes and Improvements
+--------------------------
+
+- CI: use the right project slug :pull:`1823`
+- CI: add security scanner :pull:`1833`
+- CI: run tests with docker compose :pull:`1896`
+- Dependabot: Keep uv.lock updated :pull:`1790`
+- Dependabot: make one pull request for everything :pull:`1816`
+- Dependabot: update boto weekly instead :pull:`1837`, :pull:`1843`, :pull:`1856`
+- Dependabot: disable weekly updates :pull:`1886`
+- Dependabot: set to weekly schedule :pull:`1901`
+
+
+v1.9.3 (15th April 2025)
+========================
+
+Contains a fix to a serious bug affecting dask usage, preparation for psycopg3, and a lot of other minor cleanup,
+tweaks and fixes.
+
+Includes contributions from @pjonsson, @omad, @caitlinadams, @SpacemanPaul and first PRs from new contributors
+@emmanuel-ferdman and @allrob23.
+
+Special thanks to @pjonsson who is single-handedly responsible for most of the PRs in this release, and to
+to all supporting organisations including Geoscience Australia, CSIRO and RISE.
+
+Known Issue
+-----------
+
+There are still some issues with Dask loading in 1.9.  We are looking into them and anticipate a 1.9.4 release
+to fix them in the next few weeks.
+
+Full list of changes:
+---------------------
+
+Bug Fixes
+---------
+
+- Fix error when run with Python 3.10 causing pickling errors :pull:`1776`
+- Stop filtering warnings :pull:`1734`
+
+Warnings Cleanup:
+-----------------
+
+- Fix some readthedocs warnings :pull:`1762`
+- config.py: emit ODC2DeprecationWarning :pull:`1733`
+- tests: ignore deliberate warnings :pull:`1741`, :pull:`1754`, :pull:`1768`
+- Add a common table expression to fix a SQLAlchemy 2.0 sub-query warning :pull:`1747`
+- Fix ODC2DeprecationWarnings :pull:`1737`, :pull:`1738`, :pull:`1745`
+- Undeprecate Product.grid_spec :pull:`1770`
+
+Minor Fixes and Cleanup:
+------------------------
+
+- Replace setup.py with pyproject.toml :pull:`1670`
+- Documentation fixes and tweaks :pull:`1722`, :pull:`1725`
+- Update dependencies :pull:`1727`, :pull:`1731`, :pull:`1750`
+- Convert examples and tests to pyproject.toml :pull:`1748`
+- Update to Python 3.10 syntax :pull:`1756`, :pull:`1757`, :pull:`1758`, :pull:`1759`
+- Preparations for Psycopg3 support :pull:`1763`, :pull:`1764`, :pull:`1765`, :pull:`1766`
+- Optimize index_drivers() to return a set :pull:`1774`
+- Various minor cleanups :pull:`1772`
+- api: add missing staticmethod :pull:`1773`
+- whats_new.rst updates :pull:`1769`, :pull:`1778`
+
+Typechecking Cleanups:
+----------------------
+
+- Type check cleanups :pull:`1744`, :pull:`1746`, :pull:`1742`, :pull:`1755`
+- Remove redundant casts :pull:`1758`
+- Add override annotations :pull:`1767`
+
+CI Fixes and Improvements:
+--------------------------
+
+- CI: fix docker image name :pull:`1730`
+- CI: fix codecov warning :pull:`1740`
+- CI: retry more in setup-miniconda :pull:`1753`
+- CI: cancel old PR jobs :pull:`1761`
+- CI: update doctor rst version :pull:`1775`
+- Stop building Python 2 wheels :pull:`1752`
+- pytest: only test documentation for relevant files :pull:`1751`
+- Autoupdates :pull:`1723`, :pull:`1726`, :pull:`1729`, :pull:`1771`
+- Update mypy version :pull:`1743`
+
+v1.9.2 (26th February 2025)
+===========================
+
+Bug fix release.
+
+- Fix bug in postgis implementation of datasets.count() (with search filters).  Wasn't handling
+  table joins properly so was cartesian-joining with search tables resulting in wildly inaccurate
+  results and very slow queries on large databases. :pull:`1717`
+- Suppress SQLAlchemy cartesian product warnings in datasets.find_duplicates_with_time :pull:`1719`
+- Update whats_new ready for 1.9.2 release :pull:`1720`
+
+v1.9.1 (25th February 2025)
+===========================
+
+Changes
+-------
+
+- Make compatible with Dask/Distributed versions 2024.11 and above. A change in how
+  Dask transmitted ODC data structures broke data loading in these versions. We
+  had a dependency restriction to prevent incompatible versions being installed,
+  which is now removed. :pull:`1706`
+
+- New Documentation Theme which scales properly for mobiles, includes a dark mode,
+  looks cleaner and is much more maintainable. :pull:`1676`, :pull:`1702`
+
+- Extend the allowed range of PostgreSQL TCP Ports to 65,535. Known as dynamic or
+  ephemeral port numbers, they aren't used for permanent servers, but are useful
+  when dynamically running servers for tests. :pull:`1697`
+
+Test fixes
+----------
+
+- Fix compatibility with antimeridian 0.4+, which includes a superior
+  implementation of splitting, using great circle coordinates instead of a simple
+  2D plane. :pull:`1708`
+
+- Make tests pass when run as root, which often happens within a docker container. :pull:`1705`
+
+- Hard code the use of nanosecond precision within xarray data. :pull:`1707`
+
+Maintenance
+-----------
+
+- Update pre-commit hooks. :pull:`1701`, :pull:`1699`, :pull:`1710`
+- Update copyright dates for 2025.
+- Remove our GitHub Actions dependency on DockerHub (and credentials). :pull:`1711`
+- Update the release process to be a bit simpler, and use OIDC for authentication with
+  PyPI. :pull:`1713`
+
+
+v1.9.0 (23rd December 2024)
+===========================
+
+1.9.0 is first major release of the Open Data Cube in several years.  The focus has been on retiring technical
+debt and unused features and preparing for major architectural changes in subsequent releases.
+
+As there are some backwards incompatibilities in this release, we recommend that you read the migration notes
+at ``docs/installation/MIGRATION-1.8-to-1.9`` before upgrading.
+
+Major changes from recent 1.8.x releases include:
+
+- A new index driver that uses PostGIS spatial indexes to provide faster and more accurate geospatial search
+  and provide better support for storing data that covers regions where traditional lat/long search is
+  inadequate (i.e. covering polar regions or crossing the anti-meridian).
+
+  The new postgis index driver implements a new API for working with dataset lineage, and only supports
+  a single location per dataset. It is otherwise largely backwards compatible with the legacy postgres index driver.
+
+  The legacy "postgres" index driver is still available, but will be removed in a future release.
+- A new configuration layer that provides more predictable and consistent behaviour and will be easier to
+  extend in future.
+
+  Given the nature and scope of the changes, the new configuration layer is not fully backwards compatible
+  with the old implementation, but the vast majority of use cases should only require minor adjustments
+  to existing configuration and code at most.
+- The old ``datacube.utils.geometry`` library is now deprecated.  ``odc-geo`` is used internally throughout,
+  and we recommend updating all your code to use odc-geo rather than the deprecated internal library.
+- The long-deprecated executor and ingestion workflows have been removed.
+
+
+Changes since 1.9.0-rc13
+------------------------
+
+- API autodocs cleanup (:pull:`1688`)
+- Further metadata fix for new lineage API (:pull:`1690`)
+- Update release process ready for post-1.9.0 release (:pull:`1691`)
+- Removed all references to the postgis driver as "experimental" in tests and documentation (:pull:`1693`)
+- Update whats_new.rst etc. for 1.9.0 release (:pull:`1694`)
+
+v1.9.0-rc13 (16th December 2024)
+================================
+
+- Update and cross-reference 1.8 to 1.9 migration notes (:pull:`1686`)
+- Fix SimpleDocNav lineage handling with PostGIS index (:pull:`1687`)
+- Update whats_new.rst for 1.9.0-r13 pre-release (:pull:`1689`)
+
+v1.9.0-rc12 (9th December 2024)
+===============================
+
+- Remove multiple location support from postgis driver and remove unnecessary logic copied from eodatasets3
+  (:pull:`1658`)
+- Documentation fixes (:pull:`1659`)
+- Don't use importlib_metadata (:pull:`1657`)
+- Pin upstream libraries to get CI tests running with numpy2 (:pull:`1661`)
+- Calculate spatial extent in epsg:4326 and reproject when no dedicated spatial extent for
+  the requested CRS is available (:pull:`1662`)
+- Fix broken alembic migration (:pull:`1667`)
+- Fix broken documentation build (:pull:`1668`)
+- Rename `DatasetType` to `Product` in all the tests (:pull:`1671`)
+- Fix a bunch of typos and spelling mistakes (:pull:`1672`)
+- Documentation updates for 1.9 release (:pull:`1664`, :pull:`1669`)
+- Fix metadata issues with new Lineage API. (:pull:`1679`)
+- Suppress annoying config warning when configuring by environment variable (:pull:`1680`)
+- Suppress internal deprecation warnings when running tests against deprecated code (:pull:`1681`)
+- Split index.abstract module into a package (:pull:`1682`)
+- Cherry picks from 1.8 and prepare for 1.9.0-rc12 release (:pull:`1684`)
+
+v1.9.0-rc11 (28th October 2024)
+===============================
+
+(Replaces rc10 which was a bungled pre-release.)
+
+- Permissions management cleanup in postgis driver. (:pull:`1613`)
+- Add `skip_broken_datasets` and `dc_load_limit` config options. (:pull:`1616`)
+- Enable global environment variables with `ODC_ALL` naming convention (:pull:`1616`)
+- Remove workaround for an odc-geo bug that is now fixed. (:pull:`1622`)
+- Fix call to geopolygon search. (:pull:`1627`)
+- Use antimeridian package to "fix" extent polygons. (:pull:`1628`)
+- Record lineage when adding datasets with postgis index (:pull:`1632`)
+- Update schema logic (:pull:`1634`)
+- Drop valid-area check and anti-meridian fix 3857 extents (:pull:1635)
+- Remove problematic "common_timestamp" postgresql function from postgis driver. Some internal API changes
+  required to accommodate and preserve all previous index-driver level behaviour. (:pull:`1623`)
+- Cherry picks from 1.8 (#1624-#1626, #1629-#1631) (:pull:`1637`)
+- Updates to index APIs - add `order_by` to dataset search, index name attribute, product most recent change method (:pull:`1643`)
+- Fix alembic migrations (:pull:`1645`)
+- Make psycopg2 an optional dependency (:pull:`1648`)
+- Cherry pick recent merged PRs from develop branch and update whats_new for rc10 release. (:pull:`1647`)
+- Update whats_new for rc11 release. (:pull:`1650`)
+
+v1.9.0-rc9 (3rd July 2024)
+==========================
+
+- Ensure config API works with a blank config/empty file. (:pull:`1604`)
+- Various minor maintenance fixes. (:pull:`1607`)
+- Misc cleanup, and add support for geospatial queries to count methods in postgis driver. (:pull:`1608`)
+- Add new driver based loader (via odc.loader) (:pull:`1609`)
+- Fix 1.9 docker image in GHA (:pull:`1610`)
+- Consolidate spatial search argument handling in index layer and prepare for release. (:pull:`1611`)
+
+v1.9.0-rc8 (18th June 2024)
+===========================
+
+Bugfix pre-release.
+
+The 1.9.0 branch will remain in pre-release until we have working 1.9-compatible versions of the following
+key ODC packages: `datacube-explorer`, `datacube-ows`, `eodatasets`, and `odc-apps-dc-tools`.
+Work on migrating these packages is underway, and this pre-release addresses issues identified in
+the course of that work.
+
+Due to an error in packaging, schema creation and maintenance via alembic for the postgis
+index driver has been broken for wheels based installations (including installing from PyPI via pip)
+since it was first introduced in 1.9.0-rc1.  There was a failed attempt to fix this in the previous
+pre-release.  This pre-release finally fixes it properly.
+
+- Fix packaging so that alembic data files are correctly packaged in wheels and update whats_news.rst
+  ready for 1.9.0-rc8 pre-release.  (:pull:`1599`)
+
+v1.9.0-rc7 (17th June 2024)
+===========================
+
+Bugfix pre-release.
+
+The 1.9.0 branch will remain in pre-release until we have working 1.9-compatible versions of the following
+key ODC packages: `datacube-explorer`, `datacube-ows`, `eodatasets`, and `odc-apps-dc-tools`.
+Work on migrating these packages is underway, and this pre-release addresses issues identified in
+the course of that work.
+
+Note: rc6 was accidentally released off the wrong branch and has been pulled from PyPI.
+
+- Update whats_new.rst and dropped nominal support for Windows, ready for 1.9.0-rc6 release. (:pull:`1598`)
+- Fix multi-threading race condition in config API. (:pull:`1596`)
+- Move alembic.ini to a location where it will get installed by pip (without -e). (:pull:`1597`)
+
+v1.9.0-rc5 (5th June 2024)
+==========================
+
+Another release candidate for the 1.9.0 release.  The 1.9.0 branch will remain in pre-release until we have
+working 1.9-compatible versions of the following key ODC packages: `datacube-explorer`, `datacube-ows`,
+`eodatasets`, and `odc-apps-dc-tools`.  Work on migrating these packages is underway, and this pre-release
+is mostly a response to that work - applying changes intended to ease 1.8.x to 1.9.x migration.
+
+- Update whats_new.rst, ready for 1.9.0-rc5 release (:pull:`1594`)
+- Expand extra dimension support, WIP (:pull:`1593`)
+- Ensure pre-prepared EO3 datasets can be indexed. (i.e. ensure the `prep_eo3()` function is idempotent) (:pull:`1591`)
+- The canonical name of the postgres driver is now "postgres" with "default" as an alias instead of the other
+  way around. (:pull:`1590`)
+- Update docker image to GDAL 3.9/Python 3.12/Ubuntu 24.04 (:pull:`1588`)
+- Fix typos in docs (:pull:`1577`)
+- Merge in recent 1.8.x branch changes. (:pull:`1568`, :pull:`1579`)
+- Add Product delete methods to API and command in CLI, plus misc cleanup of the surrounds (:pull:`1583`)
+
+v1.9.0-rc4 (15th April 2024)
+============================
+
+- Standardize resampling input supported to `odc.geo.warp.Resampling` (:pull:`1571`)
+- Refine default behaviour for config engine to support easier migration from 1.8 (:pull:`1573`)
+- Convert legacy GeoBoxes to odc.geo GeoBoxes in the core API (:pull:`1574`)
+- Add URL component pseudo to config layer to expose components to the api when configured as a URL,
+  and reformat whats_new for 1.9.0-rc4 release. (:pull:`1575`)
+
+
+v1.9.0-rc3 (27th March 2024)
+============================
+
+Re-pre-release of 1.9.0-rc1 to get PyPI version numbers back in sync.
+
+
+v1.9.0-rc1 (27th March 2024)
+============================
+
+- Merge in 1.8.x branch changes. (:pull:`1459`, :pull:`1473`, :pull:`1532`, :pull:`1548`, :pull:`1565`)
+- External Lineage API (:pull:`1401`)
+- Add lineage support to index clone operation (:pull:`1429`)
+- Migrate to SQLAlchemy 2.0 (:pull:`1432`)
+- Clean up deprecated code and add deprecation warnings to legacy methods, simplify DocReader logic (:pull:`1406`)
+- Mark geometry module as deprecated and replace all usage with odc-geo (:pull:`1424`)
+- Mark GridSpec as deprecated, replace math and cog functions with odc-geo equivalents, enforce new odc-geo conventions (:pull:`1441`)
+- Rename ``gbox`` to ``geobox`` in parameter names (:pull:`1441`)
+- Remove executor API (:pull:`1462`)
+- Remove ingestion methods, ``GridWorkflow`` and ``Tile`` classes (:pull:`1465`)
+- Fix postgis queries for numeric custom search fields (:pull:`1475`)
+- Document best practice for pulling in changes from develop and update constraints.txt (:pull:`1478`)
+- Postgis index driver performance tuning (:pull:`1480`)
+- Cleanup and formalise spatial index API and expose in CLI (:pull:`1481`)
+- Increase minimum Python version to 3.10 (:pull:`1509`)
+- Virtual product tests using odc-geo GridSpec (:pull:`1512`)
+- New Configuration API, as per ODC-EP10 (:pull:`1505`)
+- Alembic migrations for postgis driver (:pull:`1520`)
+- EP08 lineage extensions/changes to datasets.get(). (:pull:`1530`)
+- EP13 API changes to Index and IndexDriver. (:pull:`1534`)
+- EP13 API changes to metadata and product resources. (:pull:`1536`)
+- Phase 1 of EP13 API changes to dataset resource - get_unsafe, get_derived, temporal_extent. (:pull:`1538`)
+- Add product argument to spatial_extent method, as per EP13. (:pull:`1539`)
+- Index driver API type hint cleanup. (:pull:`1541`)
+- Deprecate multiple locations. (:pull:`1546`)
+- Deprecate search_eager and search_summaries and add `archived` arg to all dataset search/count methods. (:pull:`1550`)
+- Compatibility fix - dc.load can take odc.geo GeoBox (:pull:`1551`)
+- Migrate away from deprecated Python pkg_resources module (:pull:`1558`)
+- Add ``custom_offsets`` and ``order_by`` arguments to search_returning() - order_by still unimplemented. (:pull:`1557`)
+- Fix and enhance typehints, automated static type checking with mypy.  (:pull:`1562`)
+- Improve SQLAlchemy join hints, addressing an recurring but intermittent bug.  (:pull:`1564`)
+- Improve typehints and update docstrings in datacube/api/core.py (:pull:`1567`)
+- Add migration notes, update documentation and whats_new.rst for 1.9.0-rc1 release (:pull:`1569`)
+
+v1.8.next
+=========
+
+v1.8.20 (9th December 2024)
+===========================
+- Update docker image and CI (:pull:`1624`, :pull:`1625`, :pull:`1626`, :pull:`1639`, :pull:`1641`, :pull:`1642`)
+- Update Slack links to Discord (:pull:`1620`)
+- Automatic updates of upstream library/image versions (:pull:`1629`, :pull:`1644`, :pull:`1653`, :pull:`1660`)
+- Don't error when adding a dataset whose product doesn't have an id value (:pull:`1630`)
+- Update docs (:pull:`1631`,:pull:`1651`)
+- Pin out bad versions of dask (:pull:`1663`)
+- Ensure correct boundary scalar precision with numpy 2 (:pull:`1673`)
+- Add more string representations of nan (:pull:`1678`)
+
+v1.8.19 (2nd July 2024)
+=======================
+
+- Update whats_new.rst for 1.8.19 release (:pull:`1612`)
+- Always write floating point bands to cogs with nodata=nan for ESRI and GDAL compatibility (:pull:`1602`)
+- Add deprecation warning for config environment names that will not be supported in 1.9 (:pull:`1592`)
+- Update docker image to GDAL 3.9/Python 3.12/Ubuntu 24.04 (:pull:`1587`)
+- Update readthedocs stylesheet for dark theme (:pull:`1579`)
+
+v1.8.18 (27th March 2024)
+=========================
+
+- Add dataset cli tool ``find-duplicates`` to identify duplicate indexed datasets (:pull:`1517`)
+- Make solar_day() timezone aware (:pull:`1521`)
+- Warn if non-eo3 dataset has eo3 metadata type (:pull:`1523`)
+- Update pandas version in docker image to be consistent with conda environment and default to stdlib
+  timezone instead of pytz when converting timestamps; automatically update copyright years (:pull:`1527`)
+- Update github-Dockerhub credential-passing mechanism. (:pull:`1528`)
+- Tweak ``list_products`` logic for getting crs and resolution values (:pull:`1535`)
+- Add new ODC Cheatsheet reference doc to Data Access & Analysis documentation page (:pull:`1543`)
+- Compatibility fix to allow users to supply ``odc.geo``-style GeoBoxes to ``dc.load(like=...)`` (:pull:`1551`)
+- Fix broken codecov github action. (:pull:`1554`)
+- Update documentation links to DEA Knowledge Hub (:pull:`1559`)
+- Throw error if ``time`` dimension is provided as an int or float to Query construction
+  instead of assuming it to be seconds since epoch (:pull:`1561`)
+- Add generic NOT operator and for ODC queries and ``Not`` type wrapper (:pull:`1563`)
+- Update whats_new.rst for release (:pull:`1568`)
+
+v1.8.17 (8th November 2023)
+===========================
+- Fix schema creation with postgres driver when initialising system with ``--no-init-users`` (:pull:`1504`)
+- Switch to new jsonschema 'referencing' API and repin jsonschema to >=4.18 (:pull:`1477`)
+- Update whats_new.rst for release (:pull:`1510`)
+
+v1.8.16 (17th October 2023)
+===========================
+- Improve error message for mismatch between dataset metadata and product signature (:pull:`1472`)
+- Mark ``--confirm-ignore-lineage``, ``--auto-add-lineage``, and ``--verify-lineage`` as deprecated
+  or to be deprecated (:pull:`1472`)
+- Default delta values in ``archive_less_mature`` and ``find_less_mature`` (:pull:`1472`)
+- Fix SQLAlchemy calls and pin jsonschema version to suppress deprecation warnings (:pull:`1476`)
+- Throw a better error if a dataset is not compatible with ``archive_less_mature`` logic (:pull:`1491`)
+- Fix broken Github action workflow (:pull:`1496`)
+- Support ``like=<GeoBox>`` in virtual product ``load`` (:pull:`1497`)
+- Don't archive less mature if archive_less_mature is provided as `False` instead of `None` (:pull:`1498`)
+- Raise minimum supported Python version to 3.9 (:pull:`1500`)
+- Manually apply Dependabot updates, and update whats_new.rst for 1.8.16 release (:pull:`1501`)
+
+v1.8.15 (11th July 2023)
+========================
+- Replace `importlib_metadata` for python <3.10 compatibility
+  (:pull:`1469`)
+- Update whats_new.rst for release (:pull:`1470`)
+
+v1.8.14 (28th June 2023)
+========================
+
+- Second attempt to address unexpected handling of image aspect ratios in rasterio and
+  GDAL. (:pull:`1457`)
+- Fix broken pypi publishing Github action (:pull:`1454`)
+- Documentation improvements (:pull:`1455`)
+- Increase default maturity leniency to +-500ms (:pull:`1458`)
+- Add option to specify maturity timedelta when using ``--archive-less-mature`` option (:pull:`1460`)
+- Mark executors as deprecated (:pull:`1461`)
+- Mark ingestion as deprecated (:pull:`1463`)
+- Replace deprecated ``pkg_resources`` with ``importlib.resources`` and ``importlib.metadata`` (:pull:`1466`)
+- Update whats_new.rst for release (:pull:`1467`)
+
+v1.8.13 (6th June 2023)
+=======================
+
+- Fix broken Github action workflows (:pull:`1425`, :pull:`1427`, :pull:`1433`)
+- Setup Dependabot, and Dependabot-generated updates (:pull:`1416`, :pull:`1420`, :pull:`1423`,
+            :pull:`1428`, :pull:`1436`, :pull:`1447`)
+- Documentation fixes (:pull:`1417`, :pull:`1418`, :pull:`1430`)
+- ``datacube dataset`` cli commands print error message if missing argument (:pull:`1437`)
+- Add pre-commit hook to verify license headers (:pull:`1438`)
+- Support open-ended date ranges in `datacube dataset search`, `dc.load`, and `dc.find_datasets` (:pull:`1439`, :pull:`1443`)
+- Pass Y and Y Scale factors through to rasterio.warp.reproject, to eliminate projection bug affecting
+  non-square Areas Of Interest (See :issue:`1448` and :pull:`1450`)
+- Add `archive_less_mature` option to `datacube dataset add` and `datacube dataset update` (:pull:`1451`)
+- Allow for +-1ms leniency in finding other maturity versions of a dataset (:pull:`1452`)
+- Update whats_new.rst for release (:pull:`1453`)
+
+v1.8.12 (7th March 2023)
+========================
+
+- Rename Geometry `type` attribute to `geom_type`, to align with Shapely 2.0 (:pull:`1402`)
+- Remove some deprecated SQLAlchemy usages (:pull:`1403`, :pull:`1407`)
+- Fix RTD docs build (:pull:`1399`)
+- Minor Documentation fixes (:pull:`1409`, :pull:`1413`)
+- Bug-fix and code cleanup in virtual products (:pull:`1410`)
+- Reduce transaction isolation level to improve database write concurrency (:pull:`1414`)
+- Update dependency versions and whats_new.rst for release (:pull:`1415`)
+
+
+v1.8.11 (6 February 2023)
+=========================
+
+- Simplify Github actions (:pull:`1393`)
+- Update conda create environment README (:pull:`1394`)
+- Update conda environment file and add notes to release process to ensure pip and conda
+  dependencies are in sync and up-to-date. (:pull:`1395`)
+- Update docker constraints (:pull:`1396`)
+- Compatible with the changes w.r.t. `MultiIndex` and `coord/dims` introduced since `xarray>2022.3.0` (:pull:`1397`)
+- Final sync of conda/pip dependencies and release notes. (:pull:`1398`)
+
+
+v1.8.10 (30 January 2023)
+=========================
+
+Notes for 1.8.10
+----------------
+
+ 1. The new APIs for bulk-reads, bulk-writes and index cloning should be considered unstable and may change
+    in subsequent releases.
+ 2. Recent refactoring in the XArray library has lead to changes in behaviour that affect some ODC operations
+    and are unlikely to be addressed by the XArray team.  This release includes changes in the way the ODC
+    works with XArray to circumvent these issues. If you experience Xarray issues with this ODC release, please
+    raise an issue on Github and we will try to address them before the next release.
+
+Full list of changes:
+---------------------
+
+- Add `grid_spec` to `list_products` (:pull:`1357`)
+- Add database relationship diagram to doc (:pull:`1350`)
+- Maintain search field index tables, and use them for dataset queries (:pull:`1360`)
+- Change Github lint action to use ``conda`` and remove ``flake8`` from action (:pull:`1361`)
+- Fix database relationship diagram instruction for docker (:pull:`1362`)
+- Document ``group_by`` for ``dataset.load`` (:pull:`1364`)
+- Add search_by_metadata facility for products (:pull:`1366`)
+- Postgis driver cleanup - remove faux support for lineage (:pull:`1368`)
+- Add support for nested database transactions (:pull:`1369`)
+- Fix Github doc lint action (:pull:`1370`)
+- Tighten EO3 enforcement in postgis driver, refactor tests, and rename Dataset.type to Dataset.product
+  (with type alias for compatibility) (:pull:`1372`)
+- Fix deprecation message due to distutils Version classes (:pull:`1375`)
+- Postgresql drivers cleanup - consolidate split_uri into utils and removed unused constants (:pull:`1378`)
+- Postgresql drivers cleanup - Handle NaNs in search fields and allow caching in sanitise_extent (:pull:`1379`)
+- Fix example product yaml documentation (:pull:`1384`)
+- Bulk read/write API methods and fast whole-index cloning. Cloning does NOT include lineage information yet,
+  and new API methods may be subject to change. (:pull:`1381`)
+- Documentation update. (:pull:`1385`)
+- Clean up datetime functions (:pull:`1387`)
+- Dependency updates (:pull:`1388`, :pull:`1391`)
+- Upgrades for compatibility with newer versions of Shapely and Xarray.  (:pull:`1389`)
+- Finalise release notes for 1.8.10 release (:pull:`1392`)
+
+v1.8.9 (17 November 2022)
+=========================
+
+- Performance improvements to CRS geometry class (:pull:`1322`)
+- Extend `patch_url` argument to `dc.load()` and `dc.load_data()` to Dask loading.  (:pull:`1323`)
+- Add `sphinx.ext.autoselectionlabel` extension to readthedoc conf to support `:ref:` command (:pull:`1325`)
+- Add `pyspellcheck` for `.rst` documentation files and fix typos (:pull:`1327`)
+- Add `rst` documentation lint github action and apply best practices (:pull:`1328`)
+- Follow PEP561_ to make type hints available to other packages (:pull:`1331`)
+- Updated GitHub actions config to remove deprecated `set-output` (:pull:`1333`)
+- Add what's new page link to menu and general doc fixes (:pull:`1335`)
+- Add `search_fields` to required for metadata type schema and update doc (:pull:`1339`)
+- Fix typo and update metadata documentation (:pull:`1340`)
+- Add readthedoc preview github action (:pull:`1344`)
+- Update `nodata` in readthedoc for products page (:pull:`1347`)
+- Add `eo-datasets` to extensions & related software doc page (:pull:`1349`)
+- Fix bug affecting searches against range types of zero width (:pull:`1352`)
+- Add 1.8.9 release date and missing PR to `whats_news.rst` (:pull:`1353`)
+
+.. _PEP561: https://peps.python.org/pep-0561/
+
+v1.8.8 (5 October 2022)
+=======================
+
+- Migrate main test docker build to Ubuntu 22.04 and Python 3.10. (:pull:`1283`)
+- Dynamically create tables to serve as spatial indexes in postgis driver. (:pull:`1312`)
+- Populate spatial index tables, automatically and manually. (:pull:`1314`)
+- Perform spatial queries against spatial index tables in postgis driver. (:pull:`1316`)
+- EO3 data fixtures and tests. Fix SQLAlchemy bugs in postgis driver. (:pull:`1309`)
+- Dependency updates. (:pull:`1308`, :pull:`1313`)
+- Remove several features that had been deprecated in previous releases. (:pull:`1275`)
+- Fix broken paths in api docs. (:pull:`1277`)
+- Fix readthedocs build. (:pull:`1269`)
+- Add support for Jupyter Notebooks pages in documentation (:pull:`1279`)
+- Add doc change comparison for tuple and list types with identical values (:pull:`1281`)
+- Add flake8 to Github action workflow and correct code base per flake8 rules (:pull:`1285`)
+- Add `dataset id` check to dataset doc resolve to prevent `uuid` returning error when `id` used in `None`  (:pull:`1287`)
+- Add how to run targeted single test case in docker guide to README (:pull:`1288`)
+- Add `help message` for all `dataset`, `product` and `metadata` subcommands when required arg is not passed in (:pull:`1292`)
+- Add `error code 1` to all incomplete `dataset`, `product` and `metadata` subcommands (:pull:`1293`)
+- Add `exit_on_empty_file` message to `product` and `dataset` subcommands instead of returning no output when file is empty (:pull:`1294`)
+- Add flags to index drivers advertising what format datasets they support (eo/eo3/non-geo (e.g. telemetry only))
+  and validate in the high-level API. General refactor and cleanup of eo3.py and hl.py. (:pull: `1296`)
+- Replace references to 'agdc' and 'dataset_type' in postgis driver with 'odc' and 'product'. (:pull: `1298`)
+- Add warning message for product and metadata add when product and metadata is already in the database. (:pull: `1299`)
+- Ensure SimpleDocNav.id is of type UUID, to improve lineage resolution (:pull: `1304`)
+- Replace SQLAlchemy schema and query definitions in experimental postgis driver with newer "declarative" style ORM.
+  Portions of API dealing with lineage handling, locations, and dynamic indexes are currently broken in the postgis
+  driver. As per the warning message, the postgis driver is currently flagged as "experimental" and is not considered
+  stable. (:pull: `1305`)
+- Implement `patch_url` argument to `dc.load()` and `dc.load_data()` to provide a way to sign dataset URIs, as
+  is required to access some commercial archives (e.g. Microsoft Planetary Computer).  API is based on the `odc-stac`
+  implementation. Only works for direct loading.  More work required for deferred (i.e. Dask) loading. (:pull: `1317`)
+- Implement public-facing index-driver-independent API for managing database transactions, as per Enhancement Proposal
+  EP07 (:pull: `1318`)
+- Update Conda environment to match dependencies in setup.py (:pull: `1319`)
+- Final updates to whats_new.rst for release (:pull: `1320`)
+
+
+v1.8.7 (7 June 2022)
+====================
+
+- Cleanup mypy typechecking compliance. (:pull:`1266`)
+- When dataset add operations fail due to lineage issues, the produced error message now clearly indicates that
+  the problem was due to lineage issues. (:pull:`1260`)
+- Added support for group-by financial years to virtual products. (:pull:`1257`, :pull:`1261`)
+- Remove reference to `rasterio.path`. (:pull:`1255`)
+- Cleaner separation of postgis and postgres drivers, and suppress SQLAlchemy cache warnings. (:pull:`1254`)
+- Prevent Shapely deprecation warning. (:pull:`1253`)
+- Fix `DATACUBE_DB_URL` parsing to understand syntax like: `postgresql:///datacube?host=/var/run/postgresql` (:pull:`1256`)
+- Clearer error message when local metadata file does not exist. (:pull:`1252`)
+- Address upstream security alerts and update upstream library versions. (:pull:`1250`)
+- Clone ``postgres`` index driver as ``postgis``, and flag as experimental. (:pull:`1248`)
+- Implement a local non-persistent in-memory index driver, with maximal backwards-compatibility
+  with default postgres index driver. Doesn't work with CLI interface, as every invocation
+  will receive a new, empty index, but useful for testing and small scale proof-of-concept
+  work. (:pull:`1247`)
+- Performance and correctness fixes backported from ``odc-geo``. (:pull:`1242`)
+- Deprecate use of the celery executor. Update numpy pin in rtd-requirements.txt to suppress
+  Dependabot warnings. (:pull:`1239`)
+- Implement a minimal "null" index driver that provides an always-empty index. Mainly intended
+  to validate the recent abstraction work around the index driver layer, but may be useful
+  for some testing scenarios, and ODC use cases that do not require an index. (:pull:`1236`)
+- Regularise some minor API inconsistencies and restore redis-server to Docker image. (:pull:`1234`)
+- Move (default) postgres driver-specific files from `datacube.index` to `datacube.index.postgres`.
+  `datacube.index.Index` is now an alias for the abstract base class index interface definition
+  rather than postgres driver-specific implementation of that interface. (:pull:`1231`)
+- Update numpy and netcdf4 version in docker build (:pull:`1229`)
+  rather than postgres driver-specific implementation of that interface. (:pull:`1227`)
+- Migrate test docker image from `datacube/geobase` to `osgeo/gdal`. (:pull:`1233`)
+- Separate index driver interface definition from default index driver implementation. (:pull:`1226`)
+- Prefer WKT over EPSG when guessing CRS strings. (:pull:`1223`, :pull:`1262`)
+- Updates to documentation. (:pull:`1208`, :pull:`1212`, :pull:`1215`, :pull:`1218`, :pull:`1240`, :pull:`1244`)
+- Tweak to segmented in geometry to suppress Shapely warning. (:pull:`1207`)
+- Fix to ensure ``skip_broken_datasets`` is correctly propagated in virtual products (:pull:`1259`)
+- Deprecate `Rename`, `Select` and `ToFloat` built-in transforms in virtual products (:pull:`1263`)
+
+v1.8.6 (30 September 2021)
+==========================
+
+- Fix for searching for multiple products, now works with ``product="product_name"``
+  as well as ``product=["product_name1", "product_name2"]`` (:pull:`1201`)
+- Added ``dataset purge`` command for hard deletion of archived datasets.
+  ``--all`` option deletes all archived datasets.  (N.B. will fail if there
+  are unarchived datasets that depend on the archived datasets.)
+
+  ``--all`` option also added to ``dataset archive`` and ``dataset restore``
+  commands, to archive all unarchived datasets, and restore all archived
+  datasets, respectively.
+  (:pull:`1199`)
+- Trivial fixes to CLI help output (:pull:`1197`)
+
+v1.8.5 (18 August 2021)
+=======================
+
+- Fix unguarded dependencies on boto libraries (:pull:`1174`, :issue:`1172`)
+- Various documentation fixes (:pull:`1175`)
+- Address import problems on Windows due to use of Unix only functions (:issue:`1176`)
+- Address ``numpy.bool`` deprecation warnings (:pull:`1184`)
+
+
+v1.8.4 (6 August 2021)
+=======================
+
+- Removed example and contributed notebooks from the repository. Better `notebook examples`_ exist.
+- Removed datacube_apps, as these are not used and not maintained.
+- Add ``cloud_cover`` to EO3 metadata
+- Add ``erosion`` functionality to Virtual products' ``ApplyMask`` to supplement existing ``dilation`` functionality (:pull:`1049`)
+- Fix numeric precision issues in ``compute_reproject_roi`` when pixel size is small. (:issue:`1047`)
+- Follow up fix to (:issue:`1047`) to round scale to nearest integer if very close.
+- Add support for 3D Datasets. (:pull:`1099`)
+- New feature: search by URI from the command line ``datacube dataset uri-search``.
+- Added new "license" and "description" properties to `DatasetType` to enable easier access to product information. (:pull:`1143`, :pull:`1144`)
+- Revised the ``Datacube.list_products`` function to produce a simpler and more useful product list table (:pull:`1145`)
+- Refactor docs, making them more up to date and simpler (:pull `1137`) (:pull `1128`)
+- Add new ``dataset_predicate`` param to ``dc.load`` and ``dc.find_datasets`` for more flexible temporal filtering (e.g. loading data for non-contiguous time ranges such as specific months or seasons over multiple years). (:pull:`1148`, :pull:`1156`)
+- Fix to ``GroupBy`` to ensure output axes are correctly labelled when sorting observations using ``sort_key`` (:pull:`1157`)
+- ``GroupBy`` is now its own class to allow easier custom grouping and sorting of data (:pull:`1157`)
+- add support for IAM authentication for RDS databases in AWS. (:pull:`1168`)
+
+.. _`notebook examples`: https://github.com/GeoscienceAustralia/dea-notebooks/
+
+
+v1.8.3 (18 August 2020)
+=======================
+
+- More efficient band alias handling
+- More documentation cleanups
+- Bug fixes in ``datacube.utils.aws``, credentials handling when ``AWS_UNSIGNED`` is set
+- Product definition can now optionally include per-band scaling factors (:pull:`1002`, :issue:`1003`)
+- Fix issue where new ``updated`` columns aren't created on a fresh database (:pull:`994`, :issue:`993`)
+- Fix bug around adding ``updated`` columns locking up active databases (:pull:`1001`, :issue:`997`)
+
+v1.8.2 (10 July 2020)
+=====================
+
+- Fix regressions in ``.geobox`` (:pull:`982`)
+- Expand list of supported ``dtype`` values to include complex values (:pull:`989`)
+- Can now specify dataset location directly in the yaml document (:issue:`990`, :pull:`989`)
+- Better error reporting in ``datacube dataset update`` (:pull:`983`)
+
+v1.8.1 (2 July 2020)
+====================
+
+- Added an ``updated`` column for trigger based tracking of database row updates in PostgreSQL. (:pull:`951`)
+- Changes to the writer driver API. The driver is now responsible for constructing output URIs from user configuration. (:pull:`960`)
+- Added a :meth:`datacube.utils.geometry.assign_crs` method for better interoperability with other libraries (:pull:`967`)
+- Better interoperability with xarray_ --- the :meth:`xarray.Dataset.to_netcdf` function should work again (:issue:`972`, :pull:`976`)
+- Add support for unsigned access to public S3 resources from CLI apps (:pull:`976`)
+- Usability fixes for indexing EO3 datasets (:pull:`958`)
+- Fix CLI initialisation of the Dask Distributed Executor (:pull:`974`)
+
+.. _xarray: https://xarray.pydata.org/
+
+v1.8.0 (21 May 2020)
+====================
+
+- New virtual product combinator ``reproject`` for on-the-fly reprojection of rasters (:pull:`773`)
+- Enhancements to the ``expressions`` transformation in virtual products (:pull:`776`, :pull:`761`)
+- Support ``/vsi**`` style paths for dataset locations (:pull:`825`)
+- Remove old Search Expressions and replace with a simpler implementation based on Lark Parser. (:pull:`840`)
+- Remove no longer required PyPEG2 dependency. (:pull:`840`)
+- Switched from Travis-CI to Github Actions for CI testing and docker image builds (:pull:`845`)
+- Removed dependency on ``singledispatch``, it's available in the Python 3.4+ standard library.
+- Added some configuration validation to Ingestion
+- Allow configuring ODC Database connection settings entirely through environment variables. (:pull:`845`, :issue:`829`)
+
+  Uses ``DATACUBE_DB_URL`` if present, then falls back to ``DB_HOSTNAME``,
+  ``DB_USERNAME``, ``DB_PASSWORD``, ``DB_DATABASE``
+
+- New Docker images. Should be smaller, better tested, more reliable and easier to work with. (:pull:`845`).
+
+  - No longer uses an entrypoint script to write database configuration into a file.
+  - Fixes binary incompatibilities in geospatial libraries.
+  - Tested before being pushed to Docker Hub.
+
+- Drop support for Python 3.5.
+- Remove S3AIO driver. (:pull:`865`)
+- Change development version numbers generation. Use ``setuptools_scm`` instead of ``versioneer``. (:issue:`871`)
+- Deprecated ``datacube.helpers.write_geotiff``, use :meth:`datacube.utils.cog.write_cog` for similar functionality
+- Deprecated ``datacube.storage.masking``, moved to ``datacube.utils.masking``
+- Changed geo-registration mechanics for arrays returned by ``dc.load``. (:pull:`899`, :issue:`837`)
+- Migrate geometry and CRS backends from ``osgeo.ogr`` and ``osgeo.osr`` to shapely_ and pyproj_ respectively (:pull:`880`)
+- Driver metadata storage and retrieval. (:pull:`931`)
+- Support EO3 style datasets in ``datacube dataset add`` (:pull:`929`, :issue:`864`)
+- Removed migration support from datacube releases before 1.1.5.
+
+.. warning:: If you still run a datacube before 1.1.5 (from 2016 or older), you will need to update it
+
+    using ODC 1.7 first, before coming to 1.8.
+
+.. _shapely: https://pypi.org/project/pyproj/
+.. _pyproj: https://pypi.org/project/Shapely/
+
+v1.7.0 (16 May 2019)
+====================
+
+Not a lot of changes since rc1.
+
+- Early exit from ``dc.load`` on `KeyboardInterrupt`, allows partial loads inside notebook.
+- Some bug fixes in geometry related code
+- Some cleanups in tests
+- Pre-commit hooks configuration for easier testing
+- Re-enable multi-threaded reads for s3aio driver. Set use_threads to True in dc.load()
+
+
+v1.7.0rc1 (18 April 2019)
+=========================
+
+Virtual Products
+----------------
+
+Add ``virtual-products`` for multi-product loading.
+
+(:pull:`522`, :pull:`597`, :pull:`601`, :pull:`612`, :pull:`644`, :pull:`677`, :pull:`699`, :pull:`700`)
+
+Changes to Data Loading
+-----------------------
+The internal machinery used when loading and reprojecting data, has been completely rewritten. The new code has been
+tested, but this is a complicated and fundamental part of code and there is potential for breakage.
+
+When loading reprojected data, the new code will produce slightly different results. We don't believe that it is any
+less accurate than the old code, but you cannot expect exactly the same numeric results.
+
+Non-reprojected loads should be identical.
+
+This change has been made for two reasons:
+
+1. The reprojection is now core Data Cube, and is not the responsibility of the IO driver.
+
+2. When loading lower resolution data, DataCube can now take advantage of available overviews.
+
+- New futures based IO driver interface (:pull:`686`)
+
+Other Changes
+-------------
+
+- Allow specifying different resampling methods for different data variables of
+  the same Product. (:pull:`551`)
+- Allow all reampling methods supported by `rasterio`. (:pull:`622`)
+- Bug fix (Index out of bounds causing ingestion failures)
+- Support indexing data directly from HTTP/HTTPS/S3 URLs (:pull:`607`)
+- Renamed the command line tool `datacube metadata_type` to `datacube metadata` (:pull:`692`)
+- More useful output from the command line `datacube {product|metadata} {show|list}`
+- Add optional `progress_cbk` to `dc.load(_data)` (:pull:`702`), allows user to
+  monitor data loading progress.
+- Thread-safe netCDF access within `dc.load` (:pull:`705`)
+
+Performance Improvements
+------------------------
+
+- Use single pass over datasets when computing bounds (:pull:`660`)
+- Bugfixes and improved performance of `dask`-backed arrays (:pull:`547`, :pull:`664`)
+
+Documentation Improvements
+--------------------------
+
+- Improve :ref:`api-reference` documentation.
+
+Deprecations
+------------
+
+- From the command line, the old query syntax for searching within vague time ranges, eg: ``2018-03 < time < 2018-04``
+  has been removed. It is unclear exactly what that syntax should mean, whether to include or exclude the months
+  specified. It is replaced by ``time in [2018-01, 2018-02]`` which has the same semantics as ``dc.load`` time queries.
+  (:pull:`709`)
+
+
+v1.6.1 (27 August 2018)
+=======================
+
+Correction release. By mistake, v1.6.0 was identical to v1.6rc2!
+
+
+v1.6.0 (23 August 2018)
+=======================
+
+- Enable use of *aliases* when specifying band names
+- Fix ingestion failing after the first run (:pull:`510`)
+- Docker images now know which version of ODC they contain (:pull:`523`)
+- Fix data loading when `nodata` is `NaN` (:pull:`531`)
+- Allow querying based on python :class:`datetime.datetime` objects. (:pull:`499`)
+- Require `rasterio 1.0.2`_ or higher, which fixes several critical bugs when
+  loading and reprojecting from multi-band files.
+- Assume fixed paths for `id` and `sources` metadata fields (:issue:`482`)
+- :class:`datacube.model.Measurement` was put to use for loading in attributes
+  and made to inherit from `dict` to preserve current behaviour. (:pull:`502`)
+- Updates when indexing data with `datacube dataset add` (See :pull:`485`, :issue:`451` and :issue:`480`)
+
+
+  - Allow indexing without lineage `datacube dataset add --ignore-lineage`
+  - Removed the `--sources-policy=skip|verify|ensure`. Instead use
+    `--[no-]auto-add-lineage` and `--[no-]verify-lineage`
+  - New option `datacube dataset add --exclude-product` ``<name>``
+    allows excluding some products from auto-matching
+
+- Preliminary API for indexing datasets (:pull:`511`)
+- Enable creation of MetadataTypes without having an active database connection (:pull:`535`)
+
+.. _rasterio 1.0.2: https://github.com/mapbox/rasterio/blob/1.0.2/CHANGES.txt
+
+v1.6rc2 (29 June 2018)
+======================
+
+Backwards Incompatible Changes
+------------------------------
+
+- The `helpers.write_geotiff()` function has been updated to support files smaller
+  than 256x256. It also no longer supports specifying the time index. Before passing
+  data in, use `xarray_data.isel(time=<my_time_index>)`. (:pull:`277`)
+
+- Removed product matching options from `datacube dataset update` (:pull:`445`).
+  No matching is needed in this case as all datasets are already in the database
+  and are associated to products.
+
+- Removed `--match-rules` option from `datacube dataset add` (:pull:`447`)
+
+- The seldom-used `stack` keyword argument has been removed from `Datacube.load`.
+  (:pull:`461`)
+
+- The behaviour of the time range queries has changed to be compatible with
+  standard Python searches (eg. time slice an xarray). Now the time range
+  selection is inclusive of any unspecified time units. (:pull:`440`)
+
+  Example 1:
+    `time=('2008-01', '2008-03')` previously would have returned all data from
+    the start of 1st January, 2008 to the end of 1st of March, 2008. Now, this
+    query will return all data from the start of 1st January, 2008 and
+    23:59:59.999 on 31st of March, 2008.
+
+  Example 2:
+    To specify a search time between 1st of January and 29th of February, 2008
+    (inclusive), use a search query like `time=('2008-01', '2008-02')`. This query
+    is equivalent to using any of the following in the second time element:
+
+    | `('2008-02-29')`
+    | `('2008-02-29 23')`
+    | `('2008-02-29 23:59')`
+    | `('2008-02-29 23:59:59')`
+    | `('2008-02-29 23:59:59.999')`
+
+
+Changes
+-------
+
+- A `--location-policy` option has been added to the `datacube dataset update`
+  command. Previously this command would always add a new location to the list
+  of URIs associated with a dataset. It's now possible to specify `archive` and
+  `forget` options, which will mark previous location as archived or remove them
+  from the index altogether. The default behaviour is unchanged. (:pull:`469`)
+
+- The masking related function `describe_variable_flags()` now returns a pandas
+  DataFrame by default. This will display as a table in Jupyter Notebooks.
+  (:pull:`422`)
+
+- Usability improvements in `datacube dataset [add|update]` commands
+  (:issue:`447`, :issue:`448`, :issue:`398`)
+
+  - Embedded documentation updates
+  - Deprecated `--auto-match` (it was always on anyway)
+  - Renamed `--dtype` to `--product` (the old name will still work, but with a warning)
+  - Add option to skip lineage data when indexing (useful for saving time when
+    testing) (:pull:`473`)
+
+- Enable compression for metadata documents stored in NetCDFs generated by
+  `stacker` and `ingestor` (:issue:`452`)
+
+- Implement better handling of stacked NetCDF files (:issue:`415`)
+
+  - Record the slice index as part of the dataset location URI, using `#part=<int>`
+    syntax, index is 0-based
+  - Use this index when loading data instead of fuzzy searching by timestamp
+  - Fall back to the old behaviour when `#part=<int>` is missing and the file is
+    more than one time slice deep
+
+- Expose the following dataset fields and make them searchable:
+
+  -  `indexed_time` (when the dataset was indexed)
+  -  `indexed_by` (user who indexed the dataset)
+  -  `creation_time` (creation of dataset: when it was processed)
+  -  `label` (the label for a dataset)
+
+  (See :pull:`432` for more details)
+
+Bug Fixes
+---------
+
+- The `.dimensions` property of a product no longer crashes when product is
+  missing a `grid_spec`. It instead defaults to `time,y,x`
+
+- Fix a regression in `v1.6rc1` which made it impossible to run `datacube
+  ingest` to create products which were defined in `1.5.5` and earlier versions of
+  ODC. (:issue:`423`, :pull:`436`)
+
+- Allow specifying the chunking for string variables when writing NetCDFs
+  (:issue:`453`)
+
+
+v1.6rc1 Easter Bilby (10 April 2018)
+====================================
+
+This is the first release in a while, and so there's a lot of changes, including
+some significant refactoring, with the potential having issues when upgrading.
+
+
+Backwards Incompatible Fixes
+----------------------------
+
+ - Drop Support for Python 2. Python 3.5 is now the earliest supported Python
+   version.
+
+ - Removed the old ``ndexpr``, ``analytics`` and ``execution engine`` code. There is
+   work underway in the `execution engine branch`_ to replace these features.
+
+Enhancements
+------------
+
+ - Support for third party drivers, for custom data storage and custom index
+   implementations
+
+ - The correct way to get an Index connection in code is to use
+   :meth:`datacube.index.index_connect`.
+
+ - Changes in ingestion configuration
+
+   - Must now specify the :ref:`write_plugin` to use. For s3 ingestion there was
+     a top level ``container`` specified, which has been renamed and moved
+     under ``storage``. The entire ``storage`` section is passed through to
+     the :ref:`write_plugin`, so drivers requiring other configuration can
+     include them here. eg:
+
+     .. code:: yaml
+
+         ...
+         storage:
+           ...
+           driver: s3aio
+           bucket: my_s3_bucket
+         ...
+
+ - Added a ``Dockerfile`` to enable automated builds for a reference Docker image.
+
+ - Multiple environments can now be specified in one datacube config. See
+   :pull:`298` and the :ref:`runtime-config-doc`
+
+   - Allow specifying which ``index_driver`` should be used for an environment.
+
+ - Command line tools can now output CSV or YAML. (Issue :issue:`206`, :pull:`390`)
+
+ - Support for saving data to NetCDF using a Lambert Conformal Conic Projection
+   (:pull:`329`)
+
+ - Lots of documentation updates:
+
+   - Information about :ref:`bit-masking`.
+
+   - A description of how data is loaded.
+
+   - Some higher level architecture documentation.
+
+   - Updates on how to index new data.
+
+
+Bug Fixes
+---------
+
+ - Allow creation of :class:`datacube.utils.geometry.Geometry` objects from 3d
+   representations. The Z axis is simply thrown away.
+
+ - The `datacube --config_file` option has been renamed to
+   `datacube --config`, which is shorter and more consistent with the
+   other options. The old name can still be used for now.
+
+ - Fix a severe performance regression when extracting and reprojecting a small
+   region of data. (:pull:`393`)
+
+ - Fix for a somewhat rare bug causing read failures by attempt to read data from
+   a negative index into a file. (:pull:`376`)
+
+ - Make :class:`CRS` equality comparisons a little bit looser. Trust either a
+   *Proj.4* based comparison or a *GDAL* based comparison. (Closed :issue:`243`)
+
+New Data Support
+----------------
+
+ - Added example prepare script for Collection 1 USGS data; improved band
+   handling and downloads.
+
+ - Add a product specification and prepare script for indexing Landsat L2 Surface
+   Reflectance Data (:pull:`375`)
+
+ - Add a product specification for Sentinel 2 ARD Data (:pull:`342`)
+
+
+.. _execution engine branch: https://github.com/opendatacube/datacube-core/compare/csiro/execution-engine
+
+v1.5.4 Dingley Dahu (13th December 2017)
+========================================
+ - Minor features backported from 2.0:
+
+    - Support for ``limit`` in searches
+
+    - Alternative lazy search method ``find_lazy``
+
+ - Fixes:
+
+    - Improve native field descriptions
+
+    - Connection should not be held open between multi-product searches
+
+    - Disable prefetch for celery workers
+
+    - Support jsonify-ing decimals
+
+v1.5.3 Purpler Unicorn with Starlight (16 October 2017)
+=======================================================
+
+ - Use ``cloudpickle`` as the ``celery`` serialiser
+
+v1.5.2 Purpler Unicorn with Stars (28 August 2017)
+==================================================
+
+ - Fix bug when reading data in native projection, but outside ``source`` area. Often hit when running ``datacube-stats``
+
+ - Fix error loading and fusing data using ``dask``. (Fixes :issue:`276`)
+
+ - When reading data, implement ``skip_broken_datasets`` for the ``dask`` case too
+
+
+v1.5.4 Dingley Dahu (13th December 2017)
+========================================
+ - Minor features backported from 2.0:
+
+    - Support for ``limit`` in searches
+
+    - Alternative lazy search method ``find_lazy``
+
+ - Fixes:
+
+    - Improve native field descriptions
+
+    - Connection should not be held open between multi-product searches
+
+    - Disable prefetch for celery workers
+
+    - Support jsonify-ing decimals
+
+v1.5.3 Purpler Unicorn with Starlight (16 October 2017)
+=======================================================
+
+ - Use ``cloudpickle`` as the ``celery`` serialiser
+
+ - Allow ``celery`` tests to run without installing it
+
+ - Move ``datacube-worker`` inside the main datacube package
+
+ - Write ``metadata_type`` from the ingest configuration if available
+
+ - Support config parsing limitations of Python 2
+
+ - Fix :issue:`303`: resolve GDAL build dependencies on Travis
+
+ - Upgrade ``rasterio`` to newer version
+
+
+v1.5.2 Purpler Unicorn with Stars (28 August 2017)
+==================================================
+
+ - Fix bug when reading data in native projection, but outside ``source`` area.
+   Often hit when running ``datacube-stats``
+
+ - Fix error loading and fusing data using ``dask``. (Fixes :issue:`276`)
+
+ - When reading data, implement ``skip_broken_datasets`` for the ``dask`` case too
+
+
+v1.5.1 Purpler Unicorn (13 July 2017)
+=====================================
+
+ - Fix bug :issue:`261`. Unable to load Australian Rainfall Grid Data. This was as a
+   result of the CRS/Transformation override functionality being broken when
+   using the latest ``rasterio`` version ``1.0a9``
+
+
+v1.5.0 Purple Unicorn (9 July 2017)
+===================================
+
+New Features
+------------
+
+ - Support for AWS S3 array storage
+
+ - Driver Manager support for NetCDF, S3, S3-file drivers.
+
+Usability Improvements
+----------------------
+
+ - When ``datacube dataset add`` is unable to add a Dataset to the index, print
+   out the entire Dataset to make it easier to debug the problem.
+
+ - Give ``datacube system check`` prettier and more readable output.
+
+ - Make ``celery`` and ``redis`` optional when installing.
+
+ - Significantly reduced disk space usage for integration tests
+
+ - ``Dataset`` objects now have an ``is_active`` field to mirror ``is_archived``.
+
+ - Added ``index.datasets.get_archived_location_times()`` to see when each
+   location was archived.
+
+v1.4.1 (25 May 2017)
+====================
+
+ - Support for reading multiband HDF datasets, such as MODIS collection 6
+
+ - Workaround for ``rasterio`` issue when reprojecting stacked data
+
+ - Bug fixes for command line arg handling
+
+v1.4.0 (17 May 2017)
+====================
+
+- Adds more convenient year/date range search expressions (see :pull:`226`)
+
+- Adds a **simple replication utility** (see :pull:`223`)
+
+- Fixed issue reading products without embedded CRS info, such as ``bom_rainfall_grid`` (see :issue:`224`)
+
+- Fixed issues with stacking and ncml creation for NetCDF files
+
+- Various documentation and bug fixes
+
+- Added CircleCI as a continuous build system, for previewing generated documentation on pull
+
+- Require ``xarray`` >= 0.9. Solves common problems caused by losing embedded ``flag_def`` and ``crs`` attributes.
+
+
+v1.3.1 (20 April 2017)
+======================
+
+ - Docs now refer to "Open Data Cube"
+
+ - Docs describe how to use ``conda`` to install datacube.
+
+ - Bug fixes for the stacking process.
+
+ - Various other bug fixes and document updates.
+
+v1.3.0
+======
+
+ - Updated the Postgres product views to include the whole dataset metadata
+   document.
+
+ - ``datacube system init`` now recreates the product views by default every
+   time it is run, and now supports Postgres 9.6.
+
+ - URI searches are now better supported from the cli: ``datacube dataset search uri = file:///some/uri/here``
+
+ - ``datacube user`` now supports a user description (via ``--description``)
+   when creating a user, and delete accepts multiple user arguments.
+
+ - Platform-specific (Landsat) fields have been removed from the default ``eo``
+   metadata type in order to keep it minimal. Users & products can still add
+   their own metadata types to use additional fields.
+
+ - Dataset locations can now be archived, not just deleted. This represents a
+   location that is still accessible but is deprecated.
+
+ - We are now part of Open Data Cube, and have a new home at
+   https://github.com/opendatacube/datacube-core
+
+This release now enforces the uri index changes to be applied: it will prompt
+you to rerun ``init`` as an administrator to update your existing cubes:
+``datacube -v system init`` (this command can be run without affecting
+read-only users, but will briefly pause writes)
+
+v1.2.2
+======
+
+ - Added ``--allow-exclusive-lock`` flag to product add/update commands, allowing faster index updates when
+   system usage can be halted.
+
+ - ``{version}`` can now be used in ingester filename patterns
+
+v1.2.0 Boring as Batman (15 February 2017)
+==========================================
+ - Implemented improvements to `dataset search` and `info` cli outputs
+
+ - Can now specify a range of years to process to `ingest` cli (e.g. 2000-2005)
+
+ - Fixed `metadata_type update` cli not creating indexes (running `system init` will create missing ones)
+
+ - Enable indexing of datacube generated NetCDF files. Making it much easier to pull
+   selected data into a private datacube index.
+   Use by running `datacube dataset add selected_netcdf.nc`.
+
+ - Switch versioning system to increment the second digit instead of the third.
+
+v1.1.18 Mushroom Milkshake (9 February 2017)
+============================================
+ - Added `sources-policy` options to `dataset add` cli
+
+ - Multiple dataset search improvements related to locations
+
+ - Keep hours/minutes when grouping data by `solar_day`
+
+ - Code Changes: `datacube.model.[CRS,BoundingBox,Coordinate,GeoBox` have moved into
+   `datacube.utils.geometry`. Any code using these should update their imports.
+
+v1.1.17 Happy Festivus Continues (12 January 2017)
+==================================================
+
+ - Fixed several issues with the geometry utils
+
+ - Added more operations to the geometry utils
+
+ - Updated `recipes` to use geometry utils
+
+ - Enabled Windows CI (python 3 only)
+
+v1.1.16 Happy Festivus (6 January 2017)
+=======================================
+
+  - Added `update` command to `datacube dataset` cli
+
+  - Added `show` command to `datacube product` cli
+
+  - Added `list` and `show` commands to `datacube metadata_type` cli
+
+  - Added 'storage unit' stacker application
+
+  - Replaced `model.GeoPolygon` with `utils.geometry` library
+
+v1.1.15 Minion Party Hangover (1 December 2016)
+===============================================
+
+  - Fixed a data loading issue when reading HDF4_EOS datasets.
+
+v1.1.14 Minion Party (30 November 2016)
+=======================================
+
+  - Added support for buffering/padding of GridWorkflow tile searches
+
+  - Improved the Query class to make filtering by a source or parent dataset easier.
+    For example, this can be used to filter Datasets by Geometric Quality Assessment (GQA).
+    Use `source_filter` when requesting data.
+
+  - Additional data preparation and configuration scripts
+
+  - Various fixes for single point values for lat, lon & time searches
+
+  - Grouping by solar day now overlays scenes in a consistent, northern scene takes precedence manner.
+    Previously it was non-deterministic which scene/tile would be put on top.
+
+v1.1.13 Black Goat (15 November 2016)
+=====================================
+
+  - Added support for accessing data through `http` and `s3` protocols
+
+  - Added `dataset search` command for filtering datasets (lists `id`, `product`, `location`)
+
+  - `ingestion_bounds` can again be specified in the ingester config
+
+  - Can now do range searches on non-range fields (e.g. `dc.load(orbit=(20, 30)`)
+
+  - Merged several bug-fixes from CEOS-SEO branch
+
+  - Added Polygon Drill recipe to `recipes`
+
+v1.1.12 Unnamed Unknown (1 November 2016)
+=========================================
+
+  - Fixed the affine deprecation warning
+
+  - Added `datacube metadata_type` cli tool which supports `add` and `update`
+
+  - Improved `datacube product` cli tool logging
+
+v1.1.11 Unnamed Unknown (19 October 2016)
+=========================================
+
+  - Improved ingester task throughput when using distributed executor
+
+  - Fixed an issue where loading tasks from disk would use too much memory
+
+  - :meth:`.model.GeoPolygon.to_crs` now adds additional points (~every 100km) to improve reprojection accuracy
+
+v1.1.10 Rabid Rabbit (5 October 2016)
+=====================================
+
+  - Ingester can now be configured to have WELD/MODIS style tile indexes (thanks Chris Holden)
+
+  - Added --queue-size option to `datacube ingest` to control number of tasks queued up for execution
+
+  - Product name is now used as primary key when adding datasets.
+    This allows easy migration of datasets from one database to another
+
+  - Metadata type name is now used as primary key when adding products.
+    This allows easy migration of products from one database to another
+
+  - :meth:`.DatasetResource.has` now takes dataset id instead of :class:`.model.Dataset`
+
+  - Fixed an issues where database connections weren't recycled fast enough in some cases
+
+  - Fixed an issue where :meth:`.DatasetTypeResource.get` and :meth:`.DatasetTypeResource.get_by_name`
+    would cache `None` if product didn't exist
+
+
+v1.1.9 Pest Hippo (20 September 2016)
+=====================================
+
+  - Added origin, alignment and GeoBox-based methods to :class:`.model.GridSpec`
+
+  - Fixed satellite path/row references in the prepare scripts (Thanks to Chris Holden!)
+
+  - Added links to external datasets in :ref:`indexing`
+
+  - Improved archive and restore command line features: `datacube dataset archive` and `datacube dataset restore`
+
+  - Improved application support features
+
+  - Improved system configuration documentation
+
+
+v1.1.8 Last Mammoth (5 September 2016)
+======================================
+
+  - :meth:`.GridWorkflow.list_tiles` and :meth:`.GridWorkflow.list_cells` now
+    return a :class:`.Tile` object
+
+  - Added `resampling` parameter to :meth:`.Datacube.load` and :meth:`.GridWorkflow.load`. Will only be used if the requested data requires resampling.
+
+  - Improved :meth:`.Datacube.load` `like` parameter behaviour. This allows passing in a :class:`xarray.Dataset` to retrieve data for the same region.
+
+  - Fixed an issue with passing tuples to functions in Analytics Expression Language
+
+  - Added a :ref:`user_guide` section to the documentation containing useful code snippets
+
+  - Reorganized project dependencies into required packages and optional 'extras'
+
+  - Added `performance` dependency extras for improving run-time performance
+
+  - Added `analytics` dependency extras for analytics features
+
+  - Added `interactive` dependency extras for interactivity features
+
+
+v1.1.7 Bit Shift (22 August 2016)
+=================================
+
+  - Added bit shift and power operators to Analytics Expression Language
+
+  - Added `datacube product update` which can be used to update product definitions
+
+  - Fixed an issue where dataset geo-registration would be ignored in some cases
+
+  - Fixed an issue where Execution Engine was using dask arrays by default
+
+  - Fixed an issue where int8 data could not sometimes be retrieved
+
+  - Improved search and data retrieval performance
+
+
+v1.1.6 Lightning Roll (8 August 2016)
+=====================================
+
+  - Improved spatio-temporal search performance. `datacube system init` must be run to benefit
+
+  - Added `info`, `archive` and `restore` commands to `datacube dataset`
+
+  - Added `product-counts` command to `datacube-search` tool
+
+  - Made Index object thread-safe
+
+  - Multiple masking API improvements
+
+  - Improved database Index API documentation
+
+  - Improved system configuration documentation
+
+
+v1.1.5 Untranslatable Sign (26 July 2016)
+=========================================
+
+  - Updated the way database indexes are partitioned. Use `datacube system init --rebuild` to rebuild indexes
+
+  - Added `fuse_data` ingester configuration parameter to control overlapping data fusion
+
+  - Added `--log-file` option to `datacube dataset add` command for saving logs to a file
+
+  - Added index.datasets.count method returning number of datasets matching the query
+
+
+v1.1.4 Imperfect Inspiration (12 July 2016)
+===========================================
+
+  - Improved dataset search performance
+
+  - Restored ability to index telemetry data
+
+  - Fixed an issue with data access API returning uninitialized memory in some cases
+
+  - Fixed an issue where dataset center_time would be calculated incorrectly
+
+  - General improvements to documentation and usablity
+
+
+v1.1.3 Speeding Snowball (5 July 2016)
+======================================
+
+  - Added framework for developing distributed, task-based application
+
+  - Several additional Ingester performance improvements
+
+
+v1.1.2 Wind Chill (28 June 2016)
+================================
+
+This release brings major performance and usability improvements
+
+  - Major performance improvements to GridWorkflow and Ingester
+
+  - Ingestion can be limited to one year at a time to limit memory usage
+
+  - Ingestion can be done in two stages (serial followed by highly parallel) by using
+    --save-tasks/load-task options.
+    This should help reduce idle time in distributed processing case.
+
+  - General improvements to documentation.
+
+
+v1.1.1 Good Idea (23 June 2016)
+===============================
+
+This release contains lots of fixes in preparation for the first large
+ingestion of Geoscience Australia data into a production version of
+AGDCv2.
+
+  - General improvements to documentation and user friendliness.
+
+  - Updated metadata in configuration files for ingested products.
+
+  - Full provenance history is saved into ingested files.
+
+  - Added software versions, machine info and other details of the
+    ingestion run into the provenance.
+
+  - Added valid data region information into metadata for ingested data.
+
+  - Fixed bugs relating to changes in Rasterio and GDAL versions.
+
+  - Refactored :class:`GridWorkflow` to be easier to use, and include
+    preliminary code for saving created products.
+
+  - Improvements and fixes for bit mask generation.
+
+  - Lots of other minor but important fixes throughout the codebase.
+
+
+v1.1.0 No Spoon (3 June 2016)
+=============================
+
+This release includes restructuring of code, APIs, tools, configurations
+and concepts. The result of this churn is cleaner code, faster performance and
+the ability to handle provenance tracking of Datasets created within the Data
+Cube.
+
+The major changes include:
+
+    - The ``datacube-config`` and ``datacube-ingest`` tools have been
+      combined into ``datacube``.
+
+    - Added dependency on ``pandas`` for nicer search results listing and
+      handling.
+
+    - :ref:`Indexing <indexing>` and "ingestion" have been split into
+      separate steps.
+
+    - Data that has been :ref:`indexed <indexing>` can be accessed without
+      going through the ingestion process.
+
+    - Data can be requested in any projection and will be dynamically
+      reprojected if required.
+
+    - **Dataset Type** has been replaced by :ref:`Product <product-definitions>`
+
+    - **Storage Type** has been removed, and an "Ingestion Configuration"
+      has taken it's place.
+
+    - A new ``Datacube class`` for querying and accessing data.
+
+
+1.0.4 Square Clouds (3 June 2016)
+=================================
+
+Pre-Unification release.
+
+1.0.3 (14 April 2016)
+=====================
+
+Many API improvements.
+
+1.0.2 (23 March 2016)
+=====================
+
+1.0.1 (18 March 2016)
+=====================
+
+1.0.0 (11 March 2016)
+=====================
+
+This release is to support generation of GA Landsat reference data.
+
+
+pre-v1 (end 2015)
+=================
+
+First working Data Cube v2 code.

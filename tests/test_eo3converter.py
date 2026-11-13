@@ -1,0 +1,506 @@
+# This file is part of the Open Data Cube, see https://opendatacube.org for more information
+#
+# Copyright (c) 2015-2026 ODC Contributors
+# SPDX-License-Identifier: Apache-2.0
+# pylint: disable=unused-argument,unused-variable,missing-module-docstring,wrong-import-position,import-error
+# pylint: disable=redefined-outer-name,protected-access,import-outside-toplevel
+from __future__ import annotations
+
+import math
+import uuid
+import warnings
+from typing import Any
+
+import moto
+import pystac
+import pytest
+from odc.geo.geom import Geometry
+from odc.stac import load
+from odc.stac._mdtools import has_proj_ext, has_raster_ext
+from pystac.extensions.eo import EOExtension
+from pystac.extensions.item_assets import ItemAssetsExtension
+from pystac.extensions.projection import SCHEMA_URI as PROJECTION_SCHEMA_URI
+from pystac.extensions.projection import ProjectionExtension
+from pystac.extensions.raster import SCHEMA_URI as RASTER_SCHEMA_URI
+from pystac.extensions.view import SCHEMA_URI as VIEW_SCHEMA_URI
+from toolz import dicttoolz
+
+from datacube.metadata import (
+    ds2stac,
+    ds_doc_to_stac,
+    infer_dc_product,
+    infer_eo3_product,
+    stac2ds,
+)
+from datacube.metadata._eo3converter import _compute_uuid, _item_to_ds
+from datacube.testutils.io import native_geobox
+
+from .common import NO_WARN_CFG, STAC_CFG, mk_stac_item
+
+TYPE_CHECKING = False
+if TYPE_CHECKING:
+    from odc.stac._mdtools import RasterCollectionMetadata
+
+    from datacube.model import Dataset, Product
+
+
+def test_infer_product_collection(
+    sentinel_stac_collection: pystac.Collection,
+    sentinel_stac_ms_with_raster_ext: pystac.Item,
+) -> None:
+    assert has_raster_ext(sentinel_stac_collection) is True
+    product = infer_dc_product(sentinel_stac_collection)
+    assert product.stac is not None
+    assert product.measurements["SCL"].dtype == "uint8"
+    assert product.measurements["SCL"].get("band") is None
+    # check aliases from eo extension
+    assert product.canonical_measurement("red") == "B04"
+    assert product.canonical_measurement("green") == "B03"
+    assert product.canonical_measurement("blue") == "B02"
+
+    # check band2grid
+    md: RasterCollectionMetadata = product.stac
+    b2g = md.band2grid
+    assert b2g["B02"] == "default"
+    assert b2g["B01"] == "g60"
+    assert set(b2g.values()) == {"default", "g20", "g60"}
+
+    # Check that we can use product derived this way on an Item
+    item = sentinel_stac_ms_with_raster_ext.clone()
+
+    ds = _item_to_ds(item, product, {})
+    geobox = native_geobox(ds, basis="B02")
+    assert geobox.shape == (10980, 10980)
+    assert geobox.crs == "EPSG:32606"
+    assert native_geobox(ds, basis="B01").shape == (1830, 1830)
+
+    # Check unhappy path
+    collection = sentinel_stac_collection.clone()
+    item_assets = getattr(collection, "item_assets", None)
+    if item_assets is not None:
+        # newer pystac
+        item_assets.clear()
+    else:
+        collection.stac_extensions.remove(ItemAssetsExtension.get_schema_uri())
+
+    with pytest.raises(ValueError):
+        infer_dc_product(collection)
+
+    # Test bad overload
+    with pytest.raises(TypeError):
+        infer_dc_product([])
+
+
+def test_infer_product_item(sentinel_stac_ms: pystac.Item) -> None:
+    item = sentinel_stac_ms
+
+    assert item.collection_id in STAC_CFG
+
+    product = infer_dc_product(item, STAC_CFG)
+
+    assert product.measurements["SCL"].dtype == "uint8"
+    assert product.measurements["visual"].dtype == "uint8"
+    # check aliases from eo extension
+    assert product.canonical_measurement("red") == "B04"
+    assert product.canonical_measurement("green") == "B03"
+    assert product.canonical_measurement("blue") == "B02"
+    # check aliases from config
+    assert product.canonical_measurement("rededge1") == "B05"
+    assert product.canonical_measurement("rededge2") == "B06"
+    assert product.canonical_measurement("rededge3") == "B07"
+
+    assert product.stac is not None and set(product.stac.band2grid) == set(
+        product.measurements
+    )
+
+    _stac = dicttoolz.dissoc(sentinel_stac_ms.to_dict(), "collection")
+    item_no_collection = pystac.Item.from_dict(_stac)
+    assert item_no_collection.collection_id is None
+
+    product = infer_dc_product(item_no_collection)
+
+
+def test_infer_product_raster_ext(
+    sentinel_stac_ms_with_raster_ext: pystac.Item,
+) -> None:
+    item = sentinel_stac_ms_with_raster_ext.clone()
+    assert has_raster_ext(item) is True
+    product = infer_dc_product(item)
+
+    assert product.measurements["SCL"].dtype == "uint8"
+    assert product.measurements["visual"].dtype == "uint8"
+    assert product.measurements["visual_2"].dtype == "uint8"
+    assert product.measurements["visual_2"].band == 2
+    assert product.measurements["visual_3"].band == 3
+
+    # check aliases from eo extension
+    assert product.canonical_measurement("red") == "B04"
+    assert product.canonical_measurement("green") == "B03"
+    assert product.canonical_measurement("blue") == "B02"
+    assert product.stac is not None and set(product.stac.band2grid) | {
+        "visual_2",
+        "visual_3",
+    } == set(product.measurements)
+
+
+def test_item_to_ds(sentinel_stac_ms: pystac.Item) -> None:
+    item0 = sentinel_stac_ms
+    item = item0.clone()
+
+    assert item.collection_id in STAC_CFG
+
+    product = infer_dc_product(item, STAC_CFG)
+    ds = _item_to_ds(item, product, STAC_CFG)
+
+    assert set(ds.measurements) == set(product.measurements)
+    assert ds.crs is not None
+    assert ds.metadata.lat is not None
+    assert ds.metadata.lon is not None
+    assert ds.center_time is not None
+
+    # this checks property remap, without changing
+    # key names .platform would be None
+    assert ds.metadata.platform == "Sentinel-2B"
+
+    dss = list(stac2ds(iter([item, item, item]), STAC_CFG))
+    assert len(dss) == 3
+    assert len({id(ds.product) for ds in dss}) == 1
+
+    # Test missing band case
+    item = item0.clone()
+    item.assets.pop("B01")
+    ds = _item_to_ds(item, product, STAC_CFG)
+
+    # Test no eo extension case
+    item = item0.clone()
+    item.stac_extensions.remove(EOExtension.get_schema_uri())
+    product = infer_dc_product(item, STAC_CFG)
+    with pytest.raises(ValueError):
+        product.canonical_measurement("green")
+
+    # Test multiple CRS path
+    item = item0.clone()
+    ProjectionExtension.ext(item.assets["B01"]).epsg = 3857
+    assert ProjectionExtension.ext(item.assets["B01"]).crs_string == "EPSG:3857"
+    infer_dc_product(item, NO_WARN_CFG)
+
+
+def test_item_to_ds_no_proj(sentinel_stac_ms: pystac.Item) -> None:
+    item0 = sentinel_stac_ms
+    item = item0.clone()
+    item.stac_extensions.remove(ProjectionExtension.get_schema_uri())
+    del item.properties["proj:code"]
+    assert has_proj_ext(item) is False
+
+    product = infer_dc_product(item, STAC_CFG)
+
+    assert item.geometry is not None
+    geom = Geometry(item.geometry, "EPSG:4326")
+    ds = _item_to_ds(item, product, STAC_CFG)
+    assert ds.crs == "EPSG:4326"
+    assert ds.extent is not None
+    assert ds.extent.contains(geom)
+    assert native_geobox(ds).shape == (1, 1)
+
+
+def test_item_uuid() -> None:
+    item1 = mk_stac_item("id1", custom_property=1)
+    item2 = mk_stac_item("id2")
+
+    # Check determinism
+    assert _compute_uuid(item1) == _compute_uuid(item1)
+    assert _compute_uuid(item2) == _compute_uuid(item2)
+    assert _compute_uuid(item1) != _compute_uuid(item2)
+
+    # Check random case
+    assert _compute_uuid(item1, "random").version == 4
+    assert _compute_uuid(item1, "random") != _compute_uuid(item1, "random")
+
+    # Check "native" mode
+    _id = uuid.uuid4()
+    assert _compute_uuid(mk_stac_item(str(_id)), "native") == _id
+    assert _compute_uuid(mk_stac_item(str(_id)), "auto") == _id
+
+    # Check that extras are used
+    id1 = _compute_uuid(item1, extras=["custom_property", "missing_property"])
+    id2 = _compute_uuid(item1)
+
+    assert id1.version == 5
+    assert id2.version == 5
+    assert id1 != id2
+
+
+def test_issue_n6(usgs_landsat_stac_v1: pystac.Item) -> None:
+    expected_bands = {
+        "blue",
+        "coastal",
+        "green",
+        "nir08",
+        "red",
+        "swir16",
+        "swir22",
+        "qa_aerosol",
+        "qa_pixel",
+        "qa_radsat",
+    }
+    p = infer_dc_product(usgs_landsat_stac_v1)
+    assert set(p.measurements) == expected_bands
+
+
+def test_partial_proj(partial_proj_stac: pystac.Item) -> None:
+    (ds,) = list(stac2ds([partial_proj_stac]))
+    assert ds.metadata_doc["grids"]["default"]["shape"] == (1, 1)
+
+
+def test_noassets_case(no_bands_stac: Any) -> None:
+    (ds,) = stac2ds([no_bands_stac])
+    assert len(ds.measurements) == 0
+
+
+def test_product_cache(sentinel_stac_ms: pystac.Item) -> None:
+    item = sentinel_stac_ms
+    # simulate a product that was not created via infer_dc_product
+    # (and therefore did not have the stac attr set)
+    product = infer_dc_product(item, STAC_CFG)
+    product._stac = None
+    # make sure it doesn't error when product_cache is provided
+    (ds,) = stac2ds([item], STAC_CFG, {product.name: product})
+    assert ds.id
+
+
+def test_values_converted(s2_l2a_stac, s2_l2a_product) -> None:
+    # check that values that need to be converted are correct
+    (ds,) = stac2ds([s2_l2a_stac], STAC_CFG, {s2_l2a_product.name: s2_l2a_product})
+    assert ds.id
+    # instruments list converted to string
+    assert ds.metadata.instrument == "MSI"
+    # missing properties are filled in
+    assert ds.metadata.format == "GeoTIFF"
+    # aliased measurements are converted to their canonical names
+    assert set(s2_l2a_product.measurements.keys()).issubset(ds.measurements.keys())
+
+
+def test_accessories(sentinel_stac_ms: pystac.Item) -> None:
+    # check accessories are correctly retrieved from assets
+    expected_accs = [
+        "preview",
+        "safe-manifest",
+        "granule-metadata",
+        "inspire-metadata",
+        "product-metadata",
+        "datastrip-metadata",
+        "tilejson",
+        "rendered_preview",
+    ]
+    item = sentinel_stac_ms
+    product = infer_dc_product(item, STAC_CFG)
+    ds = _item_to_ds(item, product, STAC_CFG)
+    assert set(ds.metadata_doc["accessories"].keys()) == set(expected_accs)
+
+
+def test_ds2stac(eo3_dataset: Dataset) -> None:
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", UserWarning)
+        output_stac = ds2stac(
+            eo3_dataset,
+            self_url="https://localhost/stac/eo3_dataset.json",
+            base_url="https://localhost/",
+        ).to_dict()
+    assert output_stac["properties"]["instruments"] == ["oli", "tirs"]
+    assert set(output_stac["assets"].keys()) == set(
+        list(eo3_dataset.measurements.keys()) + list(eo3_dataset.accessories.keys())
+    )
+    assert all(
+        p in output_stac["assets"]["nbart_blue"]
+        for p in (
+            "eo:bands",
+            "proj:code",
+            "proj:shape",
+            "proj:transform",
+            "raster:bands",
+        )
+    )
+    assert output_stac["assets"]["nbart_blue"]["raster:bands"][0]["nodata"] == -999
+    assert output_stac["assets"]["oa_time_delta"]["raster:bands"][0]["nodata"] == "nan"
+    assert "raster:bands" not in output_stac["assets"]["nbar_blue"]
+    assert output_stac["links"] == [
+        {
+            "rel": "self",
+            "href": "https://localhost/stac/eo3_dataset.json",
+            "type": "application/json",
+        },
+        {
+            "title": "ODC Dataset YAML",
+            "rel": "odc_yaml",
+            "href": f"https://localhost/dataset/{eo3_dataset.id}.odc-metadata.yaml",
+            "type": "text/yaml",
+        },
+        {
+            "rel": "collection",
+            "href": f"https://localhost/stac/collections/{eo3_dataset.product.name}",
+        },
+        {
+            "title": "ODC Product Overview",
+            "rel": "product_overview",
+            "type": "text/html",
+            "href": f"https://localhost/product/{eo3_dataset.product.name}",
+        },
+        {
+            "title": "ODC Dataset Overview",
+            "rel": "alternative",
+            "type": "text/html",
+            "href": f"https://localhost/dataset/{eo3_dataset.id}",
+        },
+    ]
+    assert RASTER_SCHEMA_URI in output_stac["stac_extensions"]
+    assert PROJECTION_SCHEMA_URI in output_stac["stac_extensions"]
+    assert VIEW_SCHEMA_URI in output_stac["stac_extensions"]
+
+
+def test_sources(ds_legacy_sources: Dataset, ds_ext_lineage: Dataset) -> None:
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", UserWarning)
+        assert ds2stac(ds_legacy_sources).to_dict()["properties"]["odc:lineage"] == {
+            "level1": ["b5f234fe-bba8-5483-9bc0-250360d429cf"]
+        }
+        assert ds2stac(ds_ext_lineage).to_dict()["properties"]["odc:lineage"] == {
+            "level1": ["b5f234fe-bba8-5483-9bc0-250360d429cf"]
+        }
+
+
+def test_roundtrip(eo3_dataset: Dataset, eo3_product: Product) -> None:
+    original = eo3_dataset
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", UserWarning)
+        roundtrip = _item_to_ds(
+            ds2stac(eo3_dataset, base_url="https://localhost/"), eo3_product, {}
+        )
+    orig_doc = original.metadata_doc
+    rt_doc = roundtrip.metadata_doc
+
+    assert set(rt_doc.keys()) == set(orig_doc.keys())
+    assert set(roundtrip.properties.keys()) == set(original.properties.keys())
+
+    assert len(roundtrip.grids) == 2
+    assert (
+        list(roundtrip.grids["default"]["shape"]) == original.grids["default"]["shape"]
+    )
+    assert (
+        list(roundtrip.grids["default"]["transform"])
+        == original.grids["default"]["transform"][:6]
+    )
+    # there's no way to conserve grid names when converting to stac, but values should still be the same
+    assert (
+        list(roundtrip.grids["g15"]["shape"]) == original.grids["panchromatic"]["shape"]
+    )
+    assert (
+        list(roundtrip.grids["g15"]["transform"])
+        == original.grids["panchromatic"]["transform"][:6]
+    )
+
+    assert roundtrip.crs == original.crs
+    roundtrip_extent = roundtrip.extent
+    assert roundtrip_extent is not None
+    original_extent = original.extent
+    assert original_extent is not None
+    assert roundtrip_extent.area == pytest.approx(original_extent.area, abs=0.001)
+    assert all(
+        x == pytest.approx(y)
+        for x, y in zip(
+            rt_doc["geometry"]["coordinates"][0], orig_doc["geometry"]["coordinates"][0]
+        )
+    )
+
+    assert set(roundtrip.measurements.keys()) == set(original.measurements.keys())
+    assert roundtrip.measurements["nbar_panchromatic"]["grid"] == "g15"
+    assert set(roundtrip.accessories.keys()) == set(original.accessories.keys())
+
+
+def test_infer_eo3_product(odc_dataset_doc) -> None:
+    product = infer_eo3_product(odc_dataset_doc)
+    assert product.definition == {
+        "name": "ga_ls8c_ard_3",
+        "metadata_type": "eo3",
+        "metadata": {"product": {"name": "ga_ls8c_ard_3"}},
+        "measurements": [
+            {"name": "nbar_blue"},
+            {"name": "nbar_coastal_aerosol"},
+            {"name": "nbar_green"},
+            {"name": "nbar_nir"},
+            {"name": "nbar_panchromatic"},
+            {"name": "nbar_red"},
+            {"name": "nbar_swir_1"},
+            {"name": "nbar_swir_2"},
+            {"name": "nbart_blue"},
+            {"name": "nbart_coastal_aerosol"},
+            {"name": "nbart_green"},
+            {"name": "nbart_nir"},
+            {"name": "nbart_panchromatic"},
+            {"name": "nbart_red"},
+            {"name": "nbart_swir_1"},
+            {"name": "nbart_swir_2"},
+            {"name": "oa_azimuthal_exiting"},
+            {"name": "oa_azimuthal_incident"},
+            {"name": "oa_combined_terrain_shadow"},
+            {"name": "oa_exiting_angle"},
+            {"name": "oa_fmask"},
+            {"name": "oa_incident_angle"},
+            {"name": "oa_nbar_contiguity"},
+            {"name": "oa_nbart_contiguity"},
+            {"name": "oa_relative_azimuth"},
+            {"name": "oa_relative_slope"},
+            {"name": "oa_satellite_azimuth"},
+            {"name": "oa_satellite_view"},
+            {"name": "oa_solar_azimuth"},
+            {"name": "oa_solar_zenith"},
+            {"name": "oa_time_delta"},
+        ],
+    }
+
+
+def test_dsdoc_to_stac(odc_dataset_doc, eo3_dataset) -> None:
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", UserWarning)
+        from_doc = ds_doc_to_stac(odc_dataset_doc).to_dict()
+        from_ds = ds2stac(eo3_dataset).to_dict()
+    # from_doc assets will be missing the raster ext, so compare them separately
+    from_doc_assets = from_doc.pop("assets")
+    from_ds_assets = from_ds.pop("assets")
+    assert from_doc == from_ds
+    assert from_doc_assets.keys() == from_ds_assets.keys()
+
+
+def test_s1_nrb(s1_nrb_stac, s1_nrb_product, without_aws_env) -> None:
+    # simulate loading an indexed stac dataset by converting it to eo3 then back to stac
+    eo3_ds = next(
+        iter(
+            stac2ds(
+                [s1_nrb_stac], product_cache={"ga_s1_nrb_iw_vv_vh_0": s1_nrb_product}
+            )
+        )
+    )
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", UserWarning)
+        dc_stac = ds2stac(eo3_ds)
+    assert (
+        "https://stac-extensions.github.io/sat/v1.0.0/schema.json"
+        in dc_stac.stac_extensions
+    )
+    assert (
+        "https://stac-extensions.github.io/sar/v1.0.0/schema.json"
+        in dc_stac.stac_extensions
+    )
+    with moto.mock_aws():
+        stac_ds = load(
+            [dc_stac],
+            crs="EPSG:32753",
+            resolution=20,
+            bbox=(137.26307, -7.45486, 137.32457, -7.41362),
+        )
+    assert not math.isnan(stac_ds.VV_gamma0.data[0][0][0])
+
+
+def test_stac_multipolygon(s3_syn_product, s3_syn_stac) -> None:
+    to_ds = next(stac2ds([s3_syn_stac], product_cache={"s3_syn_2_vgi": s3_syn_product}))
+    assert to_ds._gs is not None
+    assert to_ds._gs["valid_data"]["type"] == "MultiPolygon"

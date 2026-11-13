@@ -1,36 +1,50 @@
 # This file is part of the Open Data Cube, see https://opendatacube.org for more information
 #
-# Copyright (c) 2015-2020 ODC Contributors
+# Copyright (c) 2015-2026 ODC Contributors
 # SPDX-License-Identifier: Apache-2.0
 """
 Search expression parsing for command line applications.
 
-Three types of expressions are available:
+Four types of expressions are available:
 
     FIELD = VALUE
     FIELD in DATE-RANGE
     FIELD in [START, END]
+    TIME > DATE
+    TIME < DATE
 
-Where DATE-RANGE is one of YYYY, YYYY-MM or YYYY-MM-DD
+Where DATE or DATE-RANGE is one of YYYY, YYYY-MM or YYYY-MM-DD
 and START, END are either numbers or dates.
 """
-# flake8: noqa
 
-from lark import Lark, v_args, Transformer
+from __future__ import annotations
+
+from typing import Any
+
+from lark import Lark, Transformer, v_args
 
 from datacube.api.query import _time_to_search_dims
 from datacube.model import Range
 
+TYPE_CHECKING = False
+if TYPE_CHECKING:
+    from datetime import datetime
+
+    from datacube.utils.generic import T
 
 search_grammar = r"""
     start: expression*
     ?expression: equals_expr
                | time_in_expr
                | field_in_expr
+               | time_gt_expr
+               | time_lt_expr
 
     equals_expr: field "=" value
     time_in_expr: time "in" date_range
     field_in_expr: field "in" "[" orderable "," orderable "]"
+    time_gt_expr: time ">" date_gt
+    time_lt_expr: time "<" date_lt
 
     field: FIELD
     time: TIME
@@ -47,6 +61,10 @@ search_grammar = r"""
 
     ?date_range: date -> single_date
                | "[" date "," date "]" -> date_pair
+
+    date_gt: date -> range_lower_bound
+
+    date_lt: date -> range_upper_bound
 
     date: YEAR ["-" MONTH ["-" DAY ]]
 
@@ -71,24 +89,30 @@ search_grammar = r"""
 """
 
 
-def identity(x):
+def identity(x: T) -> T:
     return x
 
 
 @v_args(inline=True)
 class TreeToSearchExprs(Transformer):
     # Convert the expressions
-    def equals_expr(self, field, value):
+    def equals_expr(self, field, value) -> dict[str, Any]:
         return {str(field): value}
 
-    def field_in_expr(self, field, lower, upper):
+    def field_in_expr(self, field, lower, upper) -> dict[str, Range]:
         return {str(field): Range(lower, upper)}
 
-    def time_in_expr(self, time_field, date_range):
+    def time_in_expr(self, time_field, date_range) -> dict[str, datetime]:
         return {str(time_field): date_range}
 
+    def time_gt_expr(self, time_field, date_gt) -> dict[str, datetime]:
+        return {str(time_field): date_gt}
+
+    def time_lt_expr(self, time_field, date_lt) -> dict[str, datetime]:
+        return {str(time_field): date_lt}
+
     # Convert the literals
-    def string(self, val):
+    def string(self, val) -> str:
         return str(val[1:-1])
 
     simple_string = url_string = field = time = str
@@ -96,30 +120,43 @@ class TreeToSearchExprs(Transformer):
     integer = int
     value = identity
 
-    def single_date(self, date):
+    def single_date(self, date) -> datetime | Range:
         return _time_to_search_dims(date)
 
-    def date_pair(self, start, end):
+    def date_pair(self, start, end) -> datetime | Range:
         return _time_to_search_dims((start, end))
 
-    def date(self, y, m=None, d=None):
+    def range_lower_bound(self, date) -> datetime | Range:
+        return _time_to_search_dims((date, None))
+
+    def range_upper_bound(self, date) -> datetime | Range:
+        return _time_to_search_dims((None, date))
+
+    def date(self, y: str | None, m: str | None = None, d: str | None = None) -> str:
         return "-".join(x for x in [y, m, d] if x is not None)
 
     # Merge everything into a single dict
-    def start(self, *search_exprs):
-        combined = {}
+    def start(self, *search_exprs) -> dict:
+        combined: dict[str, Any] = {}
         for expr in search_exprs:
+            k, v = next(iter(expr.items()))
+            # Support duplicate keys by merging the values into one tuple
+            if (existing := combined.get(k)) is not None:
+                expr = {
+                    # have to use type over isinstance to account for Range
+                    k: (existing, v) if type(existing) != tuple else (*existing, v)  # noqa: E721
+                }
             combined.update(expr)
         return combined
 
 
 def parse_expressions(*expression_text):
     expr_parser = Lark(search_grammar)
-    tree = expr_parser.parse(' '.join(expression_text))
+    tree = expr_parser.parse(" ".join(expression_text))
     return TreeToSearchExprs().transform(tree)
 
 
-def main():
+def main() -> None:
     expr_parser = Lark(search_grammar)
 
     sample_inputs = """platform = "LANDSAT_8"
@@ -135,7 +172,7 @@ def main():
     platform = LANDSAT_8
     lat in [4, 6] time in 2014-03-02
     platform=LS8 lat in [-14, -23.5] instrument="OTHER"
-    """.strip().split('\n')
+    """.strip().split("\n")
 
     for sample in sample_inputs:
         transformer = TreeToSearchExprs()
@@ -147,5 +184,5 @@ def main():
         print()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

@@ -1,12 +1,11 @@
 repos:
     - repo: https://github.com/adrienverge/yamllint.git
-      rev: v1.19.0
+      rev: v1.38.0
       hooks:
         - id: yamllint
     - repo: https://github.com/pre-commit/pre-commit-hooks
-      rev: v2.4.0
+      rev: v6.0.0
       hooks:
-        - id: flake8
         - id: end-of-file-fixer
         - id: check-docstring-first
         - id: check-json
@@ -15,10 +14,43 @@ repos:
         - id: debug-statements
         - id: name-tests-test
           args: ['--django']
-        - id: requirements-txt-fixer
+          exclude: ^tests/drivers/fail_drivers
         - id: check-added-large-files
         - id: check-merge-conflict
-    -   repo: https://github.com/pre-commit/mirrors-pylint
-        rev: v2.4.4  # Use the sha / tag you want to point at
+    -   repo: https://github.com/pylint-dev/pylint
+        rev: v4.1.3  # Use the sha / tag you want to point at
         hooks:
         -   id: pylint
+    - repo: https://github.com/astral-sh/ruff-pre-commit
+      rev: v0.17.4
+      hooks:
+      - id: ruff-check
+        args: [--fix, --show-fixes, --output-format, grouped]
+      - id: ruff-format
+    - repo: https://github.com/astral-sh/uv-pre-commit
+      rev: 0.13.7
+      hooks:
+        # Ensure uv.lock is up-to-date if pyproject.toml has changed
+        - id: uv-lock
+    - repo: https://github.com/codespell-project/codespell
+      rev: v2.4.3
+      hooks:
+      - id: codespell
+        files: ^.*\.py$
+    - repo: https://github.com/Lucas-C/pre-commit-hooks
+      rev: v1.5.6
+      hooks:
+        - id: forbid-crlf
+        - id: remove-crlf
+        - id: forbid-tabs
+          exclude: (make.bat|Makefile|debian/rules|.gitmodules)(\.in)?$
+        - id: remove-tabs
+          exclude: (make.bat|Makefile|debian/rules|.gitmodules)(\.in)?$
+          args: [--whitespaces-count, '2']
+        - id: insert-license
+          files: ./(.*).py$
+          args:
+            - --license-filepath
+            - license-template.txt
+            - --use-current-year
+            - --no-extra-eol

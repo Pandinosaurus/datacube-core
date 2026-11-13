@@ -1,17 +1,34 @@
 # This file is part of the Open Data Cube, see https://opendatacube.org for more information
 #
-# Copyright (c) 2015-2022 ODC Contributors
+# Copyright (c) 2015-2026 ODC Contributors
 # SPDX-License-Identifier: Apache-2.0
-import logging
+from __future__ import annotations
 
-from datacube.index.null._datasets import DatasetResource  # type: ignore
+import logging
+from typing import Any, override
+
+from datacube.index.abstract import (
+    AbstractIndex,
+    AbstractIndexDriver,
+    NoLineageResource,
+    UnhandledTransaction,
+)
+from datacube.index.null._datasets import DatasetResource
 from datacube.index.null._metadata_types import MetadataTypeResource
 from datacube.index.null._products import ProductResource
 from datacube.index.null._users import UserResource
-from datacube.index.abstract import AbstractIndex, AbstractIndexDriver
-from datacube.model import MetadataType
+from datacube.model.fields import get_dataset_fields
 
-_LOG = logging.getLogger(__name__)
+TYPE_CHECKING = False
+if TYPE_CHECKING:
+    from collections.abc import Mapping
+
+    from odc.geo import CRS
+
+    from datacube.cfg import ODCEnvironment
+    from datacube.model import Field
+
+_LOG: logging.Logger = logging.getLogger(__name__)
 
 
 class Index(AbstractIndex):
@@ -19,64 +36,111 @@ class Index(AbstractIndex):
     (Sub-)Minimal (non-)implementation of the Index API.
     """
 
-    def __init__(self) -> None:
+    #   Metadata type support flags
+    supports_legacy = True
+    supports_eo3 = True
+    supports_nongeo = True
+
+    #   User management support flags
+    supports_users = True
+
+    def __init__(self, env: ODCEnvironment) -> None:
+        self._env = env
         self._users = UserResource()
         self._metadata_types = MetadataTypeResource()
-        self._products = ProductResource(self.metadata_types)
-        self._datasets = DatasetResource(self.products)
+        self._products = ProductResource(self)
+        self._lineage = NoLineageResource(self)
+        self._datasets = DatasetResource(self)
 
     @property
+    @override
+    def name(self) -> str:
+        return "null_index"
+
+    @property
+    @override
+    def environment(self) -> ODCEnvironment:
+        return self._env
+
+    @property
+    @override
     def users(self) -> UserResource:
         return self._users
 
     @property
+    @override
     def metadata_types(self) -> MetadataTypeResource:
         return self._metadata_types
 
     @property
+    @override
     def products(self) -> ProductResource:
         return self._products
 
     @property
+    @override
+    def lineage(self) -> NoLineageResource:
+        return self._lineage
+
+    @property
+    @override
     def datasets(self) -> DatasetResource:
         return self._datasets
 
     @property
+    @override
     def url(self) -> str:
         return "null"
 
-    @classmethod
-    def from_config(cls, config, application_name=None, validate_connection=True):
-        return cls()
+    @property
+    @override
+    def index_id(self) -> str:
+        return "null"
+
+    @override
+    def transaction(self) -> UnhandledTransaction:
+        return UnhandledTransaction(self.index_id)
 
     @classmethod
-    def get_dataset_fields(cls, doc):
-        return {}
+    @override
+    def from_config(
+        cls,
+        cfg_env: ODCEnvironment,
+        application_name: str | None = None,
+        validate_connection: bool = True,
+    ) -> Index:
+        return cls(cfg_env)
 
-    def init_db(self, with_default_types=True, with_permissions=True):
+    @override
+    def get_dataset_fields(self, doc: Mapping[str, Any]) -> dict[str, Field]:
+        return get_dataset_fields(doc)
+
+    @override
+    def init_db(
+        self, with_default_types: bool = True, with_permissions: bool = True
+    ) -> bool:
         return True
 
-    def close(self):
+    @override
+    def close(self) -> None:
         pass
 
-    def __repr__(self):
+    @override
+    def create_spatial_index(self, crs: CRS, with_permissions: bool) -> bool:
+        _LOG.warning("null driver does not support spatio-temporal indexes")
+        return False
+
+    @override
+    def __repr__(self) -> str:
         return "Index<null>"
 
 
 class NullIndexDriver(AbstractIndexDriver):
-    @staticmethod
-    def connect_to_index(config, application_name=None, validate_connection=True):
-        return Index.from_config(config, application_name, validate_connection)
-
-    @staticmethod
-    def metadata_type_from_doc(definition: dict) -> MetadataType:
-        """
-        :param definition:
-        """
-        MetadataType.validate(definition)  # type: ignore
-        return MetadataType(definition,
-                            dataset_search_fields=Index.get_dataset_fields(definition))
+    @classmethod
+    @override
+    def index_class(cls) -> type[AbstractIndex]:
+        return Index
 
 
-def index_driver_init():
+def index_driver_init() -> NullIndexDriver:
     return NullIndexDriver()

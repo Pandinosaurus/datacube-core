@@ -1,0 +1,1273 @@
+# This file is part of the Open Data Cube, see https://opendatacube.org for more information
+#
+# Copyright (c) 2015-2026 ODC Contributors
+# SPDX-License-Identifier: Apache-2.0
+"""
+API for dataset indexing, access and search.
+"""
+
+from __future__ import annotations
+
+import logging
+import warnings
+from collections import namedtuple
+from time import monotonic
+from typing import Any, NamedTuple, cast, override
+from uuid import UUID
+
+from deprecat import deprecat
+from odc.geo import CRS
+
+from datacube.drivers.postgis._api import (
+    extract_dataset_fields,
+    mk_simple_offset_field,
+    non_native_fields,
+)
+from datacube.drivers.postgis._fields import SimpleDocField
+from datacube.drivers.postgis._schema import Dataset as SQLDataset
+from datacube.drivers.postgis._schema import search_field_map
+from datacube.drivers.postgis._spatial import (
+    extract_geometry_from_eo3_projection,
+    generate_dataset_spatial_values,
+)
+from datacube.index import (
+    extract_geom_from_query,
+    fields,
+    strip_all_spatial_fields_from_query,
+)
+from datacube.index.abstract import (
+    AbstractDatasetResource,
+    BatchStatus,
+    DatasetSpatialMixin,
+    DatasetTuple,
+)
+from datacube.index.exceptions import NoProductsWarning
+from datacube.index.postgis._transaction import IndexResourceAddIn
+from datacube.migration import ODC2DeprecationWarning
+from datacube.model import Dataset, Range
+from datacube.model._base import dsid_to_uuid
+from datacube.model.fields import Field
+from datacube.utils import _readable_offset, changes, json, jsonify_document
+from datacube.utils.changes import get_doc_changes
+from datacube.utils.uris import split_uri
+
+TYPE_CHECKING = False
+if TYPE_CHECKING:
+    import datetime
+    from collections.abc import Generator, Iterable, Iterator, Mapping, Sequence
+
+    from odc.geo import Geometry
+
+    from datacube.drivers.postgis import PostGisDb
+    from datacube.drivers.postgis._fields import PgExpression, PgField
+    from datacube.index.abstract._types import SearchMode
+    from datacube.index.postgis.index import Index
+    from datacube.model import LineageTree, Product
+    from datacube.model._base import DSID, QueryDict, QueryField
+    from datacube.utils.changes import Change, Offset
+    from datacube.utils.documents import JsonDict
+
+_LOG: logging.Logger = logging.getLogger(__name__)
+
+
+# It's a public api, so we can't reorganise old methods.
+# pylint: disable=too-many-public-methods, too-many-lines
+class DatasetResource(AbstractDatasetResource, IndexResourceAddIn):
+    def __init__(self, db: PostGisDb, index: Index) -> None:
+        self._db = db
+        super().__init__(index)
+
+    @override
+    def get_unsafe(
+        self,
+        id_: DSID,
+        include_sources: bool = False,
+        include_deriveds: bool = False,
+        max_depth: int = 0,
+    ) -> Dataset:
+        """
+        Get dataset by id (raise KeyError if not found)
+
+        :param id_: id of the dataset to retrieve
+        :param include_sources: include the full provenance tree for the dataset.
+        :param include_deriveds: include the full derivative tree for the dataset.
+        :param max_depth: The maximum depth of the source and/or derived tree.  Defaults to 0, meaning no limit.
+        """
+        id_ = dsid_to_uuid(id_)
+
+        source_tree = derived_tree = None
+        if include_sources:
+            source_tree = self._index.lineage.get_source_tree(id_, max_depth=max_depth)
+        if include_deriveds:
+            derived_tree = self._index.lineage.get_derived_tree(
+                id_, max_depth=max_depth
+            )
+
+        with self._db_connection() as connection:
+            dataset = connection.get_dataset(id_)
+            if not dataset:
+                raise KeyError(id_)
+            return self._sqldataset_to_dataset(
+                dataset, source_tree=source_tree, derived_tree=derived_tree
+            )
+
+    @override
+    def bulk_get(self, ids: Iterable[DSID]) -> Sequence[Dataset]:
+        with self._db_connection() as connection:
+            rows = connection.get_datasets([dsid_to_uuid(i) for i in ids])
+            return [self._sqldataset_to_dataset(r) for r in rows]
+
+    @deprecat(
+        reason="The 'get_derived' static method is deprecated in favour of the new lineage API.",
+        version="1.9.0",
+        category=ODC2DeprecationWarning,
+    )
+    @override
+    def get_derived(self, id_: DSID) -> list[Dataset]:
+        """
+        Get all derived datasets
+
+        :param id_: dataset id
+        """
+        raise NotImplementedError()
+
+    @override
+    def has(self, id_: DSID) -> bool:
+        """
+        Have we already indexed this dataset?
+
+        :param id_: dataset id
+        """
+        with self._db_connection() as connection:
+            return connection.contains_dataset(id_)
+
+    @override
+    def bulk_has(self, ids_: Iterable[DSID]) -> list[bool]:
+        """
+        Like `has` but operates on a list of ids.
+
+        For every supplied id check if database contains a dataset with that id.
+
+        :param ids_: list of dataset ids
+        """
+        with self._db_connection() as connection:
+            existing = set(connection.datasets_intersection(ids_))
+
+        return [x in existing for x in (dsid_to_uuid(x) for x in ids_)]
+
+    @override
+    def add(
+        self,
+        dataset: Dataset,
+        with_lineage: bool = True,
+        archive_less_mature: int | None = None,
+    ) -> Dataset:
+        """
+        Add ``dataset`` to the index. No-op if it is already present.
+
+        :param dataset: dataset to add
+
+        :param with_lineage:
+           - no effect in this index driver
+
+        :param archive_less_mature: if integer, search for less
+               mature versions of the dataset with the int value as a millisecond
+               delta in timestamp comparison
+        """
+        _LOG.info("Indexing %s", dataset.id)
+        if dataset.has_multiple_uris():
+            raise ValueError(
+                "Postgis driver does not support multiple locations for a dataset."
+            )
+        with self._db_connection(transaction=True) as transaction:
+            # 1a. insert (if not already exists)
+            product_id = dataset.product.id
+            if product_id is None:
+                # don't assume the product has an id value since it's optional,
+                # but we should error if the product doesn't exist in the db
+                product_id = self.products.get_by_name_unsafe(dataset.product.name).id
+            is_new = transaction.insert_dataset(
+                dataset.metadata_doc_without_lineage(), dataset.id, product_id
+            )
+            if is_new:
+                # 1b. Prepare spatial index extents
+                transaction.update_spindex(dsids=[dataset.id])
+                transaction.update_search_index(dsids=[dataset.id])
+                # 1c. Store locations
+                if dataset.uri is not None:
+                    self._ensure_new_locations(dataset, transaction=transaction)
+                if dataset.source_tree is not None:
+                    self._index.lineage.add(dataset.source_tree)
+                if dataset.derived_tree is not None:
+                    self._index.lineage.add(dataset.derived_tree)
+            else:
+                _LOG.warning("Dataset %s is already in the database", dataset.id)
+            if archive_less_mature is not None:
+                self.archive_less_mature(dataset, archive_less_mature)
+
+        return dataset
+
+    @override
+    def _init_bulk_add_cache(self) -> dict:
+        return {}
+
+    @override
+    def _add_batch(
+        self,
+        batch_ds: Iterable[DatasetTuple],
+        cache: Mapping[str, Any],
+        archive_less_mature: int | None = None,
+    ) -> BatchStatus:
+        # Add a "batch" of datasets.
+        b_started = monotonic()
+        crses = self._db.spatially_indexed_crses()
+
+        class BatchRep(NamedTuple):
+            datasets: list[dict[str, Any]]
+            uris: list[dict[str, Any]]
+            search_indexes: dict[str, list[dict[str, Any]]]
+            spatial_indexes: dict[CRS, list[dict[str, Any]]]
+
+        batch = BatchRep(
+            datasets=[],
+            uris=[],
+            search_indexes={"string": [], "numeric": [], "datetime": []},
+            spatial_indexes={crs: [] for crs in crses},
+        )
+        dsids = []
+        for prod, metadata_doc, uri, _ in batch_ds:
+            dsid = UUID(str(metadata_doc["id"]))
+            dsids.append(dsid)
+            if isinstance(uri, list):
+                uri = uri[0]
+            scheme, body = split_uri(uri)
+            batch.datasets.append(
+                {
+                    "id": dsid,
+                    "metadata_type_ref": prod.metadata_type.id,
+                    "product_ref": prod.id,
+                    "metadata_doc": metadata_doc,
+                    "uri_scheme": scheme,
+                    "uri_body": body,
+                }
+            )
+            extent = extract_geometry_from_eo3_projection(
+                metadata_doc["grid_spatial"]["projection"]  # type: ignore[call-overload,index]
+            )
+            if extent:
+                for crs in crses:
+                    values = generate_dataset_spatial_values(dsid, crs, extent)
+                    if values is not None:
+                        batch.spatial_indexes[crs].append(values)
+            if prod.metadata_type.name in cache:
+                search_fields = cache[prod.metadata_type.name]
+            else:
+                search_fields = non_native_fields(prod.metadata_type.definition)
+                cache[prod.metadata_type.name] = search_fields  # type: ignore[index]
+            search_field_vals = extract_dataset_fields(metadata_doc, search_fields)
+            for fname, finfo in search_field_vals.items():
+                ftype, fval = finfo
+                if isinstance(fval, Range):
+                    fval = list(fval)
+                search_key = search_field_map[ftype]
+                batch.search_indexes[search_key].append(
+                    {"dataset_ref": dsid, "search_key": fname, "search_val": fval}
+                )
+        with self._db_connection(transaction=True) as connection:
+            if batch.datasets:
+                b_added, b_skipped = connection.insert_dataset_bulk(batch.datasets)
+            else:
+                b_added, b_skipped = 0, 0
+            for crs in crses:
+                crs_values = batch.spatial_indexes[crs]
+                if crs_values:
+                    connection.insert_dataset_spatial_bulk(crs, crs_values)
+            for search_type, search_values in batch.search_indexes.items():
+                connection.insert_dataset_search_bulk(search_type, search_values)
+            if archive_less_mature is not None:
+                for ds in self.bulk_get(dsids):
+                    self.archive_less_mature(ds, archive_less_mature)
+        return BatchStatus(b_added, b_skipped, monotonic() - b_started)
+
+    @override
+    def search_product_duplicates(
+        self, product: Product, *args
+    ) -> Iterable[tuple[tuple, Iterable]]:
+        """
+        Find dataset ids who have duplicates of the given set of field names.
+
+        Product is always inserted as the first grouping field.
+
+        Returns each set of those field values and the datasets that have them.
+        """
+        dataset_fields = product.metadata_type.dataset_fields
+
+        def load_field(f: str | fields.Field) -> fields.Field:
+            if isinstance(f, str):
+                return dataset_fields[f]
+            assert isinstance(f, fields.Field), f"Not a field: {f!r}"
+            return f
+
+        group_fields = [cast("PgField", load_field(f)) for f in args]
+        expressions = [
+            cast("PgExpression", dataset_fields.get("product") == product.name)
+        ]
+
+        with self._db_connection() as connection:
+            for record in connection.get_duplicates(group_fields, expressions):
+                if "ids" in record:
+                    ids = record.pop("ids")
+                    yield namedtuple("search_result", record.keys())(**record), set(ids)
+
+    @override
+    def can_update(
+        self, dataset: Dataset, updates_allowed: Mapping | None = None
+    ) -> tuple[bool, list[Change], list[Change]]:
+        """
+        Check if dataset can be updated. Return bool,safe_changes,unsafe_changes
+
+        :param dataset: Dataset to update
+        :param updates_allowed: Allowed updates
+        """
+        if dataset.has_multiple_uris():
+            raise ValueError(
+                "Postgis driver does not support multiple locations for a dataset."
+            )
+        need_sources = dataset.sources is not None
+        # TODO: Source retrieval is broken.
+        need_sources = False
+        existing = self.get(dataset.id, include_sources=need_sources)
+        if not existing:
+            raise ValueError(
+                f"Unknown dataset {dataset.id}, cannot update - did you intend to add it?"
+            )
+
+        if dataset.product.name != existing.product.name:
+            raise ValueError(
+                "Changing product is not supported. From "
+                f"{existing.product.name} to {dataset.product.name} "
+                f"in {dataset.id}"
+            )
+
+        # TODO: figure out (un)safe changes from metadata type?
+        allowed: dict = {
+            # can always add more metadata
+            (): changes.allow_extension,
+        }
+        allowed.update(updates_allowed or {})
+
+        doc_changes = get_doc_changes(
+            existing.metadata_doc, jsonify_document(dataset.metadata_doc)
+        )
+        good_changes, bad_changes = changes.classify_changes(doc_changes, allowed)
+
+        return not bad_changes, good_changes, bad_changes
+
+    @override
+    def update(
+        self,
+        dataset: Dataset,
+        updates_allowed=None,
+        archive_less_mature: int | None = None,
+    ) -> Dataset:
+        """
+        Update dataset metadata and location
+        :param dataset: Dataset to update
+        :param updates_allowed: Allowed updates
+        :param archive_less_mature: if integer, search for less
+               mature versions of the dataset with the int value as a millisecond
+               delta in timestamp comparison
+        """
+        can_update, safe_changes, unsafe_changes = self.can_update(
+            dataset, updates_allowed
+        )
+
+        if not safe_changes and not unsafe_changes:
+            self._ensure_new_locations(dataset)
+            _LOG.info("No changes detected for dataset %s", dataset.id)
+            return dataset
+
+        for offset, old_val, new_val in safe_changes:
+            _LOG.info(
+                "Safe change in %s from %r to %r",
+                _readable_offset(offset),
+                old_val,
+                new_val,
+            )
+
+        for offset, old_val, new_val in unsafe_changes:
+            _LOG.warning(
+                "Unsafe change in %s from %r to %r",
+                _readable_offset(offset),
+                old_val,
+                new_val,
+            )
+
+        if not can_update:
+            raise ValueError(
+                f"Unsafe changes in {dataset.id}: "
+                + (
+                    ", ".join(
+                        _readable_offset(offset) for offset, _, _ in unsafe_changes
+                    )
+                )
+            )
+
+        _LOG.info("Updating dataset %s", dataset.id)
+
+        product = self.products.get_by_name(dataset.product.name)
+        with self._db_connection(transaction=True) as transaction:
+            if not transaction.update_dataset(
+                dataset.metadata_doc_without_lineage(), dataset.id, product.id
+            ):
+                raise ValueError(f"Failed to update dataset {dataset.id}...")
+            transaction.update_spindex(dsids=[dataset.id])
+            transaction.update_search_index(dsids=[dataset.id])
+            if archive_less_mature is not None:
+                self.archive_less_mature(dataset, archive_less_mature)
+
+        self._ensure_new_locations(dataset)
+
+        return dataset
+
+    def _ensure_new_locations(self, dataset, transaction=None) -> None:
+        if transaction:
+            transaction.insert_dataset_location(dataset.id, dataset.uri)
+        else:
+            with self._db_connection(transaction=True) as tr:
+                tr.insert_dataset_location(dataset.id, dataset.uri)
+
+    @override
+    def archive(self, ids: Iterable[DSID]) -> None:
+        """
+        Mark datasets as archived
+
+        :param ids: list of dataset ids to archive
+        """
+        with self._db_connection(transaction=True) as transaction:
+            for id_ in ids:
+                transaction.archive_dataset(id_)
+
+    @override
+    def restore(self, ids: Iterable[DSID]) -> None:
+        """
+        Mark datasets as not archived
+
+        :param ids: list of dataset ids to restore
+        """
+        with self._db_connection(transaction=True) as transaction:
+            for id_ in ids:
+                transaction.restore_dataset(id_)
+
+    @override
+    def purge(
+        self, ids: Iterable[DSID], allow_delete_active: bool = False
+    ) -> Sequence[DSID]:
+        """
+        Delete datasets
+
+        :param ids: iterable of dataset ids to purge
+        :param allow_delete_active: whether active datasets can be deleted
+        :return: list of purged dataset ids
+        """
+        purged = []
+        with self._db_connection(transaction=True) as transaction:
+            for id_ in ids:
+                ds = self.get(id_)
+                if ds is None:
+                    continue
+                if not ds.is_archived and not allow_delete_active:
+                    _LOG.warning(f"Cannot purge unarchived dataset: {id_}")
+                    continue
+                transaction.delete_dataset(id_)
+                purged.append(id_)
+
+        return purged
+
+    @override
+    def get_all_dataset_ids(self, archived: bool | None = False) -> list[UUID]:
+        """
+        Get list of all dataset IDs based only on archived status
+
+        This will be very slow and inefficient for large databases, and is really
+        only intended for small and/or experimental databases.
+
+        :param archived:
+        """
+        with self._db_connection(transaction=True) as transaction:
+            return [dsid[0] for dsid in transaction.all_dataset_ids(archived)]
+
+    @deprecat(
+        reason="Multiple locations per dataset are now deprecated.  Please use the 'get_location' method.",
+        version="1.9.0",
+        category=ODC2DeprecationWarning,
+    )
+    @override
+    def get_locations(self, id_: DSID) -> list[str]:
+        """
+        Get the list of storage locations for the given dataset id
+
+        :param id_: dataset id
+        """
+        loc = self.get_location(id_)
+        return [] if loc is None else [loc]
+
+    @override
+    def get_location(self, id_: DSID) -> str | None:
+        """
+        Get the list of storage locations for the given dataset id
+
+        :param id_: dataset id
+        """
+        with self._db_connection() as connection:
+            return connection.get_location(id_)
+
+    @deprecat(
+        reason="Multiple locations per dataset are now deprecated. "
+        "Archived locations may not be accessible in future releases.",
+        version="1.9.0",
+        category=ODC2DeprecationWarning,
+    )
+    @override
+    def get_archived_locations(self, id_: DSID) -> list[str]:
+        """
+        Find locations which have been archived for a dataset
+
+        :param id_: dataset id
+        """
+        return []
+
+    @deprecat(
+        reason="Multiple locations per dataset are now deprecated. "
+        "Archived locations may not be accessible in future releases.",
+        version="1.9.0",
+        category=ODC2DeprecationWarning,
+    )
+    @override
+    def get_archived_location_times(
+        self, id_: DSID
+    ) -> list[tuple[str, datetime.datetime]]:
+        """
+        Get each archived location along with the time it was archived.
+
+        :param id_: dataset id
+        """
+        return []
+
+    @deprecat(
+        reason="Multiple locations per dataset are now deprecated. "
+        "Dataset location can be set or updated with the update() method.",
+        version="1.9.0",
+        category=ODC2DeprecationWarning,
+    )
+    @override
+    def add_location(self, id_: DSID, uri: str) -> bool:
+        """
+        Add a location to the dataset if it doesn't already exist.
+
+        :param id_: dataset id
+        :param uri: fully qualified uri
+        :return: Was one added?
+        """
+        if not uri:
+            warnings.warn(f"Cannot add empty uri. (dataset {id_})", stacklevel=2)
+            return False
+
+        existing = self.get_location(id_)
+        if existing == uri:
+            warnings.warn(f"Dataset {id_} already has uri {uri}", stacklevel=2)
+            return False
+        if existing is not None and existing != uri:
+            raise ValueError(
+                "Postgis index does not support multiple dataset locations."
+            )
+
+        with self._db_connection() as connection:
+            return connection.insert_dataset_location(id_, uri)
+
+    @override
+    def get_datasets_for_location(
+        self, uri: str, mode: SearchMode | None = None
+    ) -> Iterator:
+        """
+        Find datasets that exist at the given URI
+
+        :param uri: search uri
+        :param mode: 'exact', 'prefix' or None (to guess)
+        :return:
+        """
+        with self._db_connection() as connection:
+            return (
+                self._sqldataset_to_dataset(ds)
+                for ds in connection.get_datasets_for_location(uri, mode=mode)
+            )
+
+    @deprecat(
+        reason="Multiple locations per dataset are now deprecated. "
+        "Dataset location can be set or updated with the update() method.",
+        version="1.9.0",
+        category=ODC2DeprecationWarning,
+    )
+    @override
+    def remove_location(self, id_: DSID, uri: str) -> bool:
+        """
+        Remove a location from the dataset if it exists.
+
+        :param id_: dataset id
+        :param uri: fully qualified uri
+        :returns bool: Was one removed?
+        """
+        with self._db_connection() as connection:
+            return connection.remove_location(id_, uri)
+
+    @deprecat(
+        reason="The PostGIS index does not support archived locations. "
+        "Dataset location can be set or updated with the update() method.",
+        version="1.9.0",
+        category=ODC2DeprecationWarning,
+    )
+    @override
+    def archive_location(self, id_: DSID, uri: str) -> bool:
+        """
+        Archive a location of the dataset if it exists.
+
+        :param id_: dataset id
+        :param uri: fully qualified uri
+        :return bool: location was archived
+        """
+        return False
+
+    @deprecat(
+        reason="The PostGIS index does not support archived locations. "
+        "Dataset location can be set or updated with the update() method.",
+        version="1.9.0",
+        category=ODC2DeprecationWarning,
+    )
+    @override
+    def restore_location(self, id_: DSID, uri: str) -> bool:
+        """
+        Un-archive a location of the dataset if it exists.
+
+        :param id_: dataset id
+        :param uri: fully qualified uri
+        :return bool: location was restored
+        """
+        return False
+
+    def _sqldataset_to_dataset(
+        self,
+        dataset_res: SQLDataset,
+        source_tree: LineageTree | None = None,
+        derived_tree: LineageTree | None = None,
+    ) -> Dataset:
+        return Dataset(
+            product=self.products.get(dataset_res.product_ref),
+            metadata_doc=dataset_res.metadata_doc,
+            uri=dataset_res.uri,
+            indexed_by=dataset_res.added_by,
+            indexed_time=dataset_res.added,
+            archived_time=dataset_res.archived,
+            source_tree=source_tree,
+            derived_tree=derived_tree,
+        )
+
+    def _make(
+        self,
+        dataset_res,
+        full_info: bool = False,
+        product=None,
+        source_tree: LineageTree | None = None,
+        derived_tree: LineageTree | None = None,
+    ) -> Dataset:
+        """
+        :param full_info: Include all available fields
+        """
+        kwargs = {}
+        if not isinstance(dataset_res, dict):
+            dataset_res = dataset_res._asdict()
+        if "uri" in dataset_res:
+            kwargs["uri"] = dataset_res["uri"]
+
+        return Dataset(
+            product=product or self.products.get(dataset_res["product_id"]),
+            metadata_doc=dataset_res["metadata_doc"],
+            indexed_by=dataset_res["indexed_by"] if full_info else None,
+            indexed_time=dataset_res["indexed_time"] if full_info else None,
+            archived_time=dataset_res["archived"],
+            source_tree=source_tree,
+            derived_tree=derived_tree,
+            **kwargs,
+        )
+
+    def _make_many(self, query_result, product=None) -> Iterator:
+        return (self._make(dataset, product=product) for dataset in query_result)
+
+    @override
+    def search_by_metadata(
+        self, metadata: JsonDict, archived: bool | None = False
+    ) -> Generator[Dataset]:
+        """
+        Perform a search using arbitrary metadata, returning results as Dataset objects.
+
+        Caution - slow! This will usually not use indexes.
+
+        :param metadata:
+        :param archived: include archived datasets
+        """
+        with self._db_connection() as connection:
+            for ds in connection.search_datasets_by_metadata(metadata, archived):
+                yield self._sqldataset_to_dataset(ds)
+
+    @override
+    @deprecat(
+        deprecated_args={
+            "source_filter": {
+                "reason": "Filtering by source metadata is deprecated and will be removed in future.",
+                "version": "1.9.0",
+                "category": ODC2DeprecationWarning,
+            }
+        }
+    )
+    def search(
+        self,
+        limit: int | None = None,
+        source_filter: QueryDict | None = None,
+        archived: bool | None = False,
+        order_by: Iterable | None = None,
+        **query: QueryField,
+    ) -> Generator[Dataset]:
+        """
+        Perform a search, returning results as Dataset objects.
+
+        :param limit: Limit number of datasets
+        :param archived: include archived datasets
+        :param order_by:
+        :param query:
+        """
+        if source_filter is not None:
+            _LOG.error("Source filter is not supported by PostGIS driver")
+            return
+        for product, datasets in self._do_search_by_product(
+            query,
+            source_filter=source_filter,
+            limit=limit,
+            archived=archived,
+            order_by=order_by,
+        ):
+            yield from self._make_many(datasets, product)
+
+    @override
+    def search_by_product(
+        self, archived: bool | None = False, **query: QueryField
+    ) -> Generator[tuple[Product, Iterable[Dataset]]]:
+        """
+        Perform a search, returning datasets grouped by product type.
+
+        :param archived: include archived datasets
+        :param query:
+        """
+        for product, datasets in self._do_search_by_product(query, archived=archived):
+            yield product, self._make_many(datasets, product)
+
+    @override
+    def search_returning(
+        self,
+        field_names: Iterable[str] | None = None,
+        custom_offsets: Mapping[str, Offset] | None = None,
+        limit: int | None = None,
+        archived: bool | None = False,
+        order_by: Iterable[Any] | None = None,
+        **query: QueryField,
+    ) -> Generator[NamedTuple]:
+        """
+        Perform a search, returning only the specified fields.
+
+        This method can be faster than normal search() if you don't need all
+        fields of each dataset.
+
+        It also allows for returning rows other than datasets, such as a row
+        per uri when requesting field 'uri'.
+
+        :param field_names: Names of desired fields (default = all known search
+                            fields, unless custom_offsets is set, see below)
+        :param custom_offsets: A dictionary of offsets in the metadata doc for custom
+                               fields custom offsets are returned in addition to fields
+                               named in field_names. Default is None, field_names only.
+                               If field_names is None, and custom_offsets are provided,
+                               only the custom offsets are included, over-riding
+                               the normal field_names default.
+        :param limit: Limit number of dataset (None/default = unlimited)
+        :param archived: False (default): Return active datasets only.
+                         None: Include archived and active datasets.
+                         True: Return archived datasets only.
+        :param order_by: a field name, field, function or clause by which to sort
+                         output. None is unsorted and may allow faster return of first
+                          result depending on the index driver's implementation.
+        :param query: search query parameters
+        :return: Namedtuple of requested fields, for each matching dataset.
+        """
+        field_name_d: dict[str, None] = {}
+        if field_names is None and custom_offsets is None:
+            for f in self._index.products.get_field_names():
+                field_name_d[f] = None
+        elif field_names:
+            for f in field_names:
+                field_name_d[f] = None
+        if custom_offsets:
+            custom_fields = {
+                name: mk_simple_offset_field(name, name, offset)
+                for name, offset in custom_offsets.items()
+            }
+            for name in custom_fields:
+                field_name_d[name] = None
+        else:
+            custom_fields = {}
+
+        result_type = namedtuple("search_result", list(field_name_d.keys()))  # type: ignore[misc]
+
+        for _, results in self._do_search_by_product(
+            query,
+            return_fields=True,
+            select_field_names=list(field_name_d.keys()),
+            additional_fields=custom_fields,
+            limit=limit,
+            archived=archived,
+            order_by=order_by,
+        ):
+            for columns in results:
+
+                def extract_field(f):
+                    # Custom fields are not type-aware and returned as stringified json.
+                    return (
+                        json.loads(columns.get(f))
+                        if f in custom_fields
+                        else columns.get(f)
+                    )
+
+                kwargs = {f: extract_field(f) for f in field_name_d}
+                yield result_type(**kwargs)
+
+    @override
+    def count(self, archived: bool | None = False, **query: QueryField) -> int:
+        """
+        Perform a search, returning count of results.
+
+        :param archived: include archived datasets
+        :param query:
+        """
+        # This may be optimised into one query in the future.
+        result = 0
+        for _, count in self._do_count_by_product(query, archived=archived):
+            result += count
+
+        return result
+
+    @override
+    def count_by_product(
+        self, archived: bool | None = False, **query: QueryField
+    ) -> Iterable[tuple[Product, int]]:
+        """
+        Perform a search, returning a count of for each matching product type.
+
+        :param archived: include archived datasets
+        :param query:
+        :returns: Sequence of (product, count)
+        """
+        return self._do_count_by_product(query, archived=archived)
+
+    @override
+    def count_by_product_through_time(
+        self, period: str, archived: bool | None = False, **query: QueryField
+    ) -> Iterable[tuple[Product, Iterable[tuple[Range, int]]]]:
+        """
+        Perform a search, returning counts for each product grouped in time slices
+        of the given period.
+
+        :param query:
+        :param period: Time range for each slice: '1 month', '1 day' etc.
+        :returns: For each matching product type, a list of time ranges and their count.
+        """
+        return self._do_time_count(period, query)
+
+    @override
+    def count_product_through_time(
+        self, period: str, archived: bool | None = False, **query: QueryField
+    ) -> Iterable[tuple[Range, int]]:
+        """
+        Perform a search, returning counts for a single product grouped in time slices
+        of the given period.
+
+        Will raise an error if the search terms match more than one product.
+
+        :param query:
+        :param period: Time range for each slice: '1 month', '1 day' etc.
+        :returns: For each matching product type, a list of time ranges and their count.
+        """
+        return next(self._do_time_count(period, query, ensure_single=True))[1]
+
+    def _get_product_queries(self, query) -> Iterator:
+        for product, q in self.products.search_robust(**query):
+            q["product_id"] = product.id
+            yield q, product
+
+    def _empty_product_queries_reason(self, query) -> str:
+        product = query.pop("product", None)
+        if product is None:
+            return f"No products match search terms: {query!r}"
+        # If products were specified in the query but no matching products were found,
+        # it could either be because none of the products exist in the database,
+        # or because none of the products define the specified fields
+        product = [product] if isinstance(product, str) else list(product)
+        if all(self.products.get_by_name(p) is None for p in product):
+            return f"No such product(s): {(', ').join(product)}"
+        return f"Specified products do not match search terms: {query!r}"
+
+    # pylint: disable=too-many-locals
+    def _do_search_by_product(
+        self,
+        query,
+        return_fields: bool = False,
+        additional_fields: Mapping[str, Field] | None = None,
+        select_field_names: Sequence[str] | None = None,
+        with_source_ids: bool = False,
+        source_filter=None,
+        limit: int | None = None,
+        archived: bool | None = False,
+        order_by=None,
+    ) -> Iterable[tuple[Product, Iterable[dict[str, Any]]]]:
+        assert not with_source_ids
+        assert source_filter is None
+        product_queries = list(self._get_product_queries(query))
+        if not product_queries:
+            warnings.warn(
+                self._empty_product_queries_reason(query),
+                NoProductsWarning,
+                stacklevel=2,
+            )
+            return
+
+        for q, product in product_queries:
+            # Validate spatial inputs even when skipping spatial filtering.
+            geom = None if product.global_datasets else extract_geom_from_query(**q)
+            q = strip_all_spatial_fields_from_query(q)
+            dataset_fields = product.metadata_type.dataset_fields
+            if additional_fields:
+                dataset_fields.update(additional_fields)
+            query_exprs = tuple(fields.to_expressions(dataset_fields.get, **q))
+            select_fields = None
+            if return_fields:
+                # if no fields specified, select all
+                if select_field_names is None:
+                    select_fields = tuple(
+                        field
+                        for name, field in dataset_fields.items()
+                        if not field.affects_row_selection
+                    )
+                else:
+                    # Allow placeholder columns for requested fields that are not
+                    # valid for this product query.
+                    select_fields = tuple(
+                        dataset_fields[field_name]
+                        for field_name in select_field_names
+                        if field_name in dataset_fields
+                    )
+            with self._db_connection() as connection:
+                yield (
+                    product,
+                    connection.search_datasets(
+                        query_exprs,
+                        select_fields=select_fields,
+                        limit=limit,
+                        with_source_ids=with_source_ids,
+                        geom=geom,
+                        archived=archived,
+                        order_by=order_by,
+                    ),
+                )
+
+    def _do_count_by_product(
+        self, query, archived: bool | None = False
+    ) -> Generator[tuple[Product, int]]:
+        product_queries = list(self._get_product_queries(query))
+        if not product_queries:
+            warnings.warn(
+                self._empty_product_queries_reason(query),
+                NoProductsWarning,
+                stacklevel=2,
+            )
+            return
+
+        for q, product in product_queries:
+            # Validate spatial inputs even when skipping spatial filtering.
+            geom = None if product.global_datasets else extract_geom_from_query(**q)
+            q = strip_all_spatial_fields_from_query(q)
+            dataset_fields = product.metadata_type.dataset_fields
+            query_exprs = tuple(fields.to_expressions(dataset_fields.get, **q))
+            with self._db_connection() as connection:
+                count = connection.count_datasets(
+                    query_exprs, archived=archived, geom=geom
+                )
+            if count > 0:
+                yield product, count
+
+    def _do_time_count(self, period, query, ensure_single: bool = False) -> Iterator:
+        if "time" not in query:
+            raise ValueError(
+                'Counting through time requires a "time" range query argument'
+            )
+
+        query = dict(query)
+
+        start, end = query["time"]
+        del query["time"]
+
+        product_queries = list(self._get_product_queries(query))
+        if not product_queries:
+            warnings.warn(
+                self._empty_product_queries_reason(query),
+                NoProductsWarning,
+                stacklevel=2,
+            )
+            return
+        if ensure_single and len(product_queries) > 1:
+            raise RuntimeError(
+                "Multiple products match single query search: "
+                f"{[dt.name for _, dt in product_queries]!r}"
+            )
+
+        for q, product in product_queries:
+            dataset_fields = product.metadata_type.dataset_fields
+            query_exprs = tuple(fields.to_expressions(dataset_fields.get, **q))
+            with self._db_connection() as connection:
+                yield (
+                    product,
+                    list(
+                        connection.count_datasets_through_time(
+                            start, end, period, dataset_fields.get("time"), query_exprs
+                        )
+                    ),
+                )
+
+    @override
+    @deprecat(
+        reason="This method is deprecated and will be removed in 2.0.  "
+        "Consider migrating to search_returning()",
+        version="1.9.0",
+        category=ODC2DeprecationWarning,
+    )
+    def search_summaries(
+        self, archived: bool | None = False, **query: QueryField
+    ) -> Iterable[Mapping[str, Any]]:
+        """
+        Perform a search, returning just the search fields of each dataset.
+
+        :param query:
+        """
+        for _, results in self._do_search_by_product(
+            query, return_fields=True, archived=archived
+        ):
+            for columns in results:
+                yield columns._asdict()  # type: ignore[attr-defined]
+
+    @override
+    @deprecat(
+        reason="This method is deprecated and will be removed in 2.0.  "
+        "Consider migrating to search_returning()",
+        version="1.9.0",
+        category=ODC2DeprecationWarning,
+    )
+    # pylint: disable=redefined-outer-name
+    def search_returning_datasets_light(
+        self,
+        field_names: tuple,
+        custom_offsets=None,
+        limit: int | None = None,
+        archived: bool | None = False,
+        **query: QueryField,
+    ) -> Iterable[tuple]:
+        """
+        This is a dataset search function that returns the results as objects of a dynamically
+        generated Dataset class that is a subclass of tuple.
+
+        Only the requested fields will be returned together with related derived attributes as property functions
+        similar to the datacube.model.Dataset class. For example, if 'extent' is requested all of
+        'crs', 'extent', 'transform', and 'bounds' are available as property functions.
+
+        The field_names can be custom fields in addition to those specified in metadata_type, fixed fields, or
+        native fields. The field_names can also be derived fields like 'extent', 'crs', 'transform',
+        and 'bounds'. The custom fields require custom offsets of the metadata doc be provided.
+
+        The datasets can be selected based on values of custom fields as long as relevant custom
+        offsets are provided. However, custom field values are not transformed so must match what is
+        stored in the database.
+
+        :param field_names: A tuple of field names that would be returned including derived fields
+                            such as extent, crs
+        :param custom_offsets: A dictionary of offsets in the metadata doc for custom fields
+        :param limit: Number of datasets returned per product.
+        :param query: key, value mappings of query that will be processed against metadata_types,
+                      product definitions and/or dataset table.
+        :return: A Dynamically generated DatasetLight (a subclass of namedtuple and possibly with
+        property functions).
+        """
+        assert field_names
+
+        for product, query_exprs in self.make_query_expr(query, custom_offsets):
+            select_fields = self.make_select_fields(
+                product, field_names, custom_offsets
+            )
+            select_field_names = tuple(field.name for field in select_fields)
+            result_type = namedtuple("DatasetLight", select_field_names)  # type: ignore[misc]
+
+            if "grid_spatial" in select_field_names:
+
+                class DatasetLight(result_type, DatasetSpatialMixin):
+                    pass
+            else:
+
+                class DatasetLight(result_type):  # type: ignore[no-redef]
+                    __slots__ = ()
+
+            with self._db_connection() as connection:
+                results = connection.search_datasets(
+                    query_exprs,
+                    select_fields=select_fields,
+                    limit=limit,
+                    archived=archived,
+                )
+
+            for result in results:
+                field_values = {}
+                for field in select_fields:
+                    # We need to load the simple doc fields
+                    if isinstance(field, SimpleDocField):
+                        field_values[field.name] = json.loads(result[field.name])
+                    else:
+                        field_values[field.name] = result[field.name]
+
+                yield DatasetLight(**field_values)
+
+    def make_select_fields(
+        self, product, field_names: Sequence[str], custom_offsets
+    ) -> list[PgField]:
+        """
+        Parse and generate the list of select fields to be passed to the database API.
+        """
+        assert product and field_names
+
+        dataset_fields = product.metadata_type.dataset_fields
+        dataset_section = product.metadata_type.definition["dataset"]
+
+        select_fields = []
+        for field_name in field_names:
+            if dataset_fields.get(field_name):
+                select_fields.append(dataset_fields[field_name])
+            else:
+                # try to construct the field
+                if field_name in {"transform", "extent", "crs", "bounds"}:
+                    grid_spatial = dataset_section.get("grid_spatial")
+                    if grid_spatial:
+                        select_fields.append(
+                            SimpleDocField(
+                                "grid_spatial",
+                                "grid_spatial",
+                                SQLDataset.metadata_doc,
+                                False,
+                                offset=grid_spatial,
+                            )
+                        )
+                elif custom_offsets and field_name in custom_offsets:
+                    select_fields.append(
+                        SimpleDocField(
+                            field_name,
+                            field_name,
+                            SQLDataset.metadata_doc,
+                            False,
+                            offset=custom_offsets[field_name],
+                        )
+                    )
+                elif field_name == "uris":
+                    select_fields.append(Field("uris", "uris"))
+
+        return select_fields
+
+    def make_query_expr(self, query, custom_offsets) -> Iterator:
+        """
+        Generate query expressions including queries based on custom fields
+        """
+        product_queries = list(self._get_product_queries(query))
+        custom_query = {}
+        if not product_queries:
+            # The key, values in query that are un-matchable with info
+            # in metadata types and product definitions, perhaps there are custom
+            # fields, will need to handle custom fields separately
+
+            canonical_query = query.copy()
+            custom_query = {
+                key: canonical_query.pop(key)
+                for key in custom_offsets
+                if key in canonical_query
+            }
+            product_queries = list(self._get_product_queries(canonical_query))
+
+            if not product_queries:
+                raise ValueError(f"No products match search terms: {query!r}")
+
+        for q, product in product_queries:
+            dataset_fields = product.metadata_type.dataset_fields
+            query_exprs = tuple(fields.to_expressions(dataset_fields.get, **q))
+            custom_query_exprs = tuple(
+                self.get_custom_query_expressions(custom_query, custom_offsets)
+            )
+
+            yield product, query_exprs + custom_query_exprs
+
+    def get_custom_query_expressions(self, custom_query, custom_offsets) -> list:
+        """
+        Generate query expressions for custom fields. it is assumed that custom fields are to be found
+        in metadata doc and their offsets are provided. custom_query is a dict of key fields involving
+        custom fields.
+        """
+        custom_exprs = []
+        for key in custom_query:
+            # for now, we assume all custom query fields are SimpleDocFields
+            custom_field = SimpleDocField(
+                custom_query[key],
+                custom_query[key],
+                Dataset.metadata,
+                False,
+                offset=custom_offsets[key],
+            )
+            custom_exprs.append(fields.as_expression(custom_field, custom_query[key]))
+
+        return custom_exprs
+
+    @override
+    def temporal_extent(
+        self, ids: Iterable[DSID]
+    ) -> tuple[datetime.datetime, datetime.datetime]:
+        """
+        Returns the minimum and maximum acquisition time of the specified datasets.
+        """
+        with self._db_connection() as connection:
+            return connection.temporal_extent_by_ids(ids)
+
+    @override
+    def spatial_extent(
+        self, ids: Iterable[DSID], crs: CRS = CRS("EPSG:4326")
+    ) -> Geometry | None:
+        with self._db_connection() as connection:
+            return connection.spatial_extent(ids, crs)
+
+    @override
+    def get_all_docs_for_product(
+        self, product: Product, batch_size: int = 1000
+    ) -> Iterable[DatasetTuple]:
+        local_product = self.products.get_by_name(product.name)
+        product_search_key = [local_product.id]
+        with self._db_connection(transaction=True) as connection:
+            for row in connection.bulk_simple_dataset_search(
+                products=product_search_key, batch_size=batch_size
+            ):
+                _, metadata_doc, uris = tuple(row)
+                yield DatasetTuple(product, metadata_doc, uris)

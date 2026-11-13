@@ -1,44 +1,57 @@
 # This file is part of the Open Data Cube, see https://opendatacube.org for more information
 #
-# Copyright (c) 2015-2020 ODC Contributors
+# Copyright (c) 2015-2026 ODC Contributors
 # SPDX-License-Identifier: Apache-2.0
+from __future__ import annotations
+
 import logging
+from typing import override
 
 from cachetools.func import lru_cache
+from odc.geo import CRS
 
 from datacube.index import fields
 from datacube.index.abstract import AbstractProductResource
-from datacube.model import DatasetType
-from datacube.utils import InvalidDocException, jsonify_document, changes, _readable_offset
+from datacube.index.postgres._transaction import IndexResourceAddIn
+from datacube.model import Not, Product, unnest_nots
+from datacube.utils import _readable_offset, changes, jsonify_document
 from datacube.utils.changes import check_doc_unchanged, get_doc_changes
 
-from typing import Iterable
+TYPE_CHECKING = False
+if TYPE_CHECKING:
+    import datetime
+    from collections.abc import Generator, Iterable, Mapping, Sequence
 
-_LOG = logging.getLogger(__name__)
+    from odc.geo import Geometry
+
+    from datacube.drivers.postgres import PostgresDb
+    from datacube.index.abstract._metadata_types import AbstractMetadataTypeResource
+    from datacube.index.postgres.index import Index
+    from datacube.model import QueryField
+    from datacube.utils.documents import JsonDict
 
 
-class ProductResource(AbstractProductResource):
+_LOG: logging.Logger = logging.getLogger(__name__)
+
+
+class ProductResource(AbstractProductResource, IndexResourceAddIn):
     """
-    :type _db: datacube.drivers.postgres._connections.PostgresDb
-    :type metadata_type_resource: datacube.index._metadata_types.MetadataTypeResource
+    Legacy driver product resource implementation
     """
 
-    def __init__(self, db, metadata_type_resource):
-        """
-        :type db: datacube.drivers.postgres._connections.PostgresDb
-        :type metadata_type_resource: datacube.index._metadata_types.MetadataTypeResource
-        """
+    def __init__(self, db: PostgresDb, index: Index) -> None:
+        super().__init__(index)
         self._db = db
-        self.metadata_type_resource = metadata_type_resource
 
-        self.get_unsafe = lru_cache()(self.get_unsafe)
-        self.get_by_name_unsafe = lru_cache()(self.get_by_name_unsafe)
+        self.get_unsafe = lru_cache()(self.get_unsafe)  # type: ignore[method-assign]
+        self.get_by_name_unsafe = lru_cache()(self.get_by_name_unsafe)  # type: ignore[method-assign]
 
-    def __getstate__(self):
+    @override
+    def __getstate__(self) -> tuple[PostgresDb, AbstractMetadataTypeResource]:
         """
         We define getstate/setstate to avoid pickling the caches
         """
-        return self._db, self.metadata_type_resource
+        return self._db, self._index.metadata_types
 
     def __setstate__(self, state):
         """
@@ -46,7 +59,8 @@ class ProductResource(AbstractProductResource):
         """
         self.__init__(*state)
 
-    def add(self, product, allow_table_lock=False):
+    @override
+    def add(self, product: Product, allow_table_lock: bool = False) -> Product | None:
         """
         Add a Product.
 
@@ -54,26 +68,47 @@ class ProductResource(AbstractProductResource):
             Allow an exclusive lock to be taken on the table while creating the indexes.
             This will halt other user's requests until completed.
 
-            If false, creation will be slightly slower and cannot be done in a transaction.
-        :param DatasetType product: Product to add
-        :rtype: DatasetType
+            If false, creation will be slightly slower
+
+        :param product: Product to add
         """
-        DatasetType.validate(product.definition)
+        Product.validate(product.definition)  # type: ignore[attr-defined]
+        Product.validate_measurements(product.definition)
+        Product.validate_extra_dims(product.definition)
 
         existing = self.get_by_name(product.name)
         if existing:
+            _LOG.warning(
+                f"Product {product.name} is already in the database, checking for differences"
+            )
             check_doc_unchanged(
                 existing.definition,
                 jsonify_document(product.definition),
-                'Metadata Type {}'.format(product.name)
+                f"Metadata Type {product.name}",
             )
         else:
-            metadata_type = self.metadata_type_resource.get_by_name(product.metadata_type.name)
+            metadata_type = self._index.metadata_types.get_by_name(
+                product.metadata_type.name
+            )
             if metadata_type is None:
-                _LOG.warning('Adding metadata_type "%s" as it doesn\'t exist.', product.metadata_type.name)
-                metadata_type = self.metadata_type_resource.add(product.metadata_type,
-                                                                allow_table_lock=allow_table_lock)
-            with self._db.connect() as connection:
+                _LOG.warning(
+                    'Adding metadata_type "%s" as it doesn\'t exist.',
+                    product.metadata_type.name,
+                )
+                metadata_type = self._index.metadata_types.add(
+                    product.metadata_type, allow_table_lock=allow_table_lock
+                )
+                if metadata_type is None:
+                    _LOG.warning(
+                        f"Adding metadata_type {product.metadata_type.name} failed"
+                    )
+                    return None
+
+            with self._db_connection() as connection:
+                if connection.in_transaction and not allow_table_lock:
+                    raise ValueError(
+                        "allow_table_lock must be True if called inside a transaction."
+                    )
                 connection.insert_product(
                     name=product.name,
                     metadata=product.metadata_doc,
@@ -84,88 +119,129 @@ class ProductResource(AbstractProductResource):
                 )
         return self.get_by_name(product.name)
 
-    def can_update(self, product, allow_unsafe_updates=False):
+    @override
+    def can_update(
+        self,
+        product: Product,
+        allow_unsafe_updates: bool = False,
+        allow_table_lock: bool = False,
+    ) -> tuple[bool, Iterable[changes.Change], Iterable[changes.Change]]:
         """
         Check if product can be updated. Return bool,safe_changes,unsafe_changes
 
         (An unsafe change is anything that may potentially make the product
         incompatible with existing datasets of that type)
 
-        :param DatasetType product: Product to update
-        :param bool allow_unsafe_updates: Allow unsafe changes. Use with caution.
-        :rtype: bool,list[change],list[change]
+        :param product: Product to update
+        :param allow_unsafe_updates: Allow unsafe changes. Use with caution.
+        :param allow_table_lock:
+            Allow an exclusive lock to be taken on the table while creating the indexes.
+            This will halt other user's requests until completed.
+
+            If false, creation will be slower and cannot be done in a transaction.
         """
-        DatasetType.validate(product.definition)
+        Product.validate(product.definition)  # type: ignore[attr-defined]
+        Product.validate_measurements(product.definition)
+        Product.validate_extra_dims(product.definition)
 
         existing = self.get_by_name(product.name)
         if not existing:
-            raise ValueError('Unknown product %s, cannot update – did you intend to add it?' % product.name)
+            raise ValueError(
+                f"Unknown product {product.name}, cannot update - did you intend to add it?"
+            )
 
-        updates_allowed = {
-            ('description',): changes.allow_any,
-            ('license',): changes.allow_any,
-            ('metadata_type',): changes.allow_any,
-
+        updates_allowed: Mapping[changes.Offset, changes.AllowPolicy] = {
+            ("description",): changes.allow_any,
+            ("license",): changes.allow_any,
+            ("metadata_type",): changes.allow_any,
             # You can safely make the match rules looser but not tighter.
             # Tightening them could exclude datasets already matched to the product.
             # (which would make search results wrong)
-            ('metadata',): changes.allow_truncation,
-
+            ("metadata",): changes.allow_truncation,
             # Some old storage fields should not be in the product definition any more: allow removal.
-            ('storage', 'chunking'): changes.allow_removal,
-            ('storage', 'driver'): changes.allow_removal,
-            ('storage', 'dimension_order'): changes.allow_removal,
+            ("storage", "chunking"): changes.allow_removal,
+            ("storage", "driver"): changes.allow_removal,
+            ("storage", "dimension_order"): changes.allow_removal,
         }
 
-        doc_changes = get_doc_changes(existing.definition, jsonify_document(product.definition))
-        good_changes, bad_changes = changes.classify_changes(doc_changes, updates_allowed)
+        doc_changes = get_doc_changes(
+            existing.definition, jsonify_document(product.definition)
+        )
+        good_changes, bad_changes = changes.classify_changes(
+            doc_changes, updates_allowed
+        )
 
         for offset, old_val, new_val in good_changes:
-            _LOG.info("Safe change in %s from %r to %r", _readable_offset(offset), old_val, new_val)
+            _LOG.info(
+                "Safe change in %s from %r to %r",
+                _readable_offset(offset),
+                old_val,
+                new_val,
+            )
 
         for offset, old_val, new_val in bad_changes:
-            _LOG.warning("Unsafe change in %s from %r to %r", _readable_offset(offset), old_val, new_val)
+            _LOG.warning(
+                "Unsafe change in %s from %r to %r",
+                _readable_offset(offset),
+                old_val,
+                new_val,
+            )
 
         return allow_unsafe_updates or not bad_changes, good_changes, bad_changes
 
-    def update(self, product: DatasetType, allow_unsafe_updates=False, allow_table_lock=False):
+    @override
+    def update(
+        self,
+        product: Product,
+        allow_unsafe_updates: bool = False,
+        allow_table_lock: bool = False,
+    ) -> Product | None:
         """
         Update a product. Unsafe changes will throw a ValueError by default.
 
         (An unsafe change is anything that may potentially make the product
         incompatible with existing datasets of that type)
 
-        :param DatasetType product: Product to update
-        :param bool allow_unsafe_updates: Allow unsafe changes. Use with caution.
+        :param product: Product to update
+        :param allow_unsafe_updates: Allow unsafe changes. Use with caution.
         :param allow_table_lock:
             Allow an exclusive lock to be taken on the table while creating the indexes.
             This will halt other user's requests until completed.
 
             If false, creation will be slower and cannot be done in a transaction.
-        :rtype: DatasetType
         """
-
-        can_update, safe_changes, unsafe_changes = self.can_update(product, allow_unsafe_updates)
+        can_update, safe_changes, unsafe_changes = self.can_update(
+            product, allow_unsafe_updates
+        )
 
         if not safe_changes and not unsafe_changes:
-            _LOG.info("No changes detected for product %s", product.name)
+            _LOG.warning("No changes detected for product %s", product.name)
             return self.get_by_name(product.name)
 
         if not can_update:
-            raise ValueError(f"Unsafe changes in {product.name}: " + (
-                ", ".join(
-                    _readable_offset(offset)
-                    for offset, _, _ in unsafe_changes
+            raise ValueError(
+                f"Unsafe changes in {product.name}: "
+                + (
+                    ", ".join(
+                        _readable_offset(offset) for offset, _, _ in unsafe_changes
+                    )
                 )
-            ))
+            )
 
         _LOG.info("Updating product %s", product.name)
 
-        existing = self.get_by_name(product.name)
-        changing_metadata_type = product.metadata_type.name != existing.metadata_type.name
+        existing = self.get_by_name_unsafe(product.name)
+        changing_metadata_type = (
+            product.metadata_type.name != existing.metadata_type.name
+        )
         if changing_metadata_type:
-            raise ValueError("Unsafe change: cannot (currently) switch metadata types for a product")
-            # TODO: Ask Jeremy WTF is going on here
+            raise ValueError(
+                "Unsafe change: cannot (currently) switch metadata types for a product"
+            )
+            #  In the past, an effort was made to allow changing metadata types where the new
+            #  type extends the old type without breaking it.  Banning all metadata type changes
+            #  is safer and simpler.
+            #
             # If the two metadata types declare the same field with different postgres expressions
             # we can't safely change it.
             # (Replacing the index would cause all existing users to have no effective index)
@@ -179,10 +255,11 @@ class ProductResource(AbstractProductResource):
             #                 name, field.sql_expression, new_field.sql_expression
             #             )
             #         )
-        metadata_type = self.metadata_type_resource.get_by_name(product.metadata_type.name)
-        # TODO: should we add metadata type here?
-        assert metadata_type, "TODO: should we add metadata type here?"
-        with self._db.connect() as conn:
+        # metadata_type = cast(MetadataType, self._index.metadata_types.get_by_name(product.metadata_type.name))
+        metadata_type = product.metadata_type
+        #     Given we cannot change metadata type because of the check above, and this is an
+        #     update method, the metadata type is guaranteed to already exist.
+        with self._db_connection(transaction=allow_table_lock) as conn:
             conn.update_product(
                 name=product.name,
                 metadata=product.metadata_doc,
@@ -190,25 +267,30 @@ class ProductResource(AbstractProductResource):
                 search_fields=metadata_type.dataset_fields,
                 definition=product.definition,
                 update_metadata_type=changing_metadata_type,
-                concurrently=not allow_table_lock
+                concurrently=not allow_table_lock,
             )
 
-        self.get_by_name_unsafe.cache_clear()
-        self.get_unsafe.cache_clear()
+        self.get_by_name_unsafe.cache_clear()  # type: ignore[attr-defined]
+        self.get_unsafe.cache_clear()  # type: ignore[attr-defined]
         return self.get_by_name(product.name)
 
-    def update_document(self, definition, allow_unsafe_updates=False, allow_table_lock=False):
+    @override
+    def update_document(
+        self,
+        definition: JsonDict,
+        allow_unsafe_updates: bool = False,
+        allow_table_lock: bool = False,
+    ) -> Product | None:
         """
         Update a Product using its definition
 
-        :param bool allow_unsafe_updates: Allow unsafe changes. Use with caution.
-        :param dict definition: product definition document
+        :param allow_unsafe_updates: Allow unsafe changes. Use with caution.
+        :param definition: product definition document
         :param allow_table_lock:
             Allow an exclusive lock to be taken on the table while creating the indexes.
             This will halt other user's requests until completed.
 
             If false, creation will be slower and cannot be done in a transaction.
-        :rtype: DatasetType
         """
         type_ = self.from_doc(definition)
         return self.update(
@@ -217,61 +299,107 @@ class ProductResource(AbstractProductResource):
             allow_table_lock=allow_table_lock,
         )
 
+    @override
+    def delete(
+        self, products: Iterable[Product], allow_delete_active: bool = False
+    ) -> Sequence[Product]:
+        """
+        Delete Products, as well as all related datasets
+
+        :param products: the Products to delete
+        :param allow_delete_active:
+            Whether to delete products with active datasets
+        :return: list of deleted products
+        """
+        deleted = []
+        for product in products:
+            with self._db_connection(transaction=True) as conn:
+                # First find and delete all related datasets
+                product_datasets = self._index.datasets.search_returning(
+                    ("id",), archived=None, product=product.name
+                )
+                product_datasets = [ds.id for ds in product_datasets]  # type: ignore[attr-defined]
+                purged = self._index.datasets.purge(
+                    product_datasets, allow_delete_active
+                )
+                # if not all product datasets are purged, it must be because
+                # we're not allowing active datasets to be purged
+                if len(purged) != len(product_datasets):
+                    _LOG.warning(
+                        f"Product {product.name} cannot be deleted because it has active datasets."
+                    )
+                    continue
+                # Now we can safely delete the Product
+                conn.delete_product(
+                    name=product.name,
+                    fields=product.metadata_type.dataset_fields,
+                    definition=product.definition,
+                )
+                deleted.append(product)
+        return deleted
+
     # This is memoized in the constructor
     # pylint: disable=method-hidden
-    def get_unsafe(self, id_):  # type: ignore
-        with self._db.connect() as connection:
+    @override
+    def get_unsafe(self, id_: int) -> Product:
+        with self._db_connection() as connection:
             result = connection.get_product(id_)
         if not result:
-            raise KeyError('"%s" is not a valid Product id' % id_)
+            raise KeyError(f'"{id_}" is not a valid Product id')
         return self._make(result)
 
     # This is memoized in the constructor
     # pylint: disable=method-hidden
-    def get_by_name_unsafe(self, name):  # type: ignore
-        with self._db.connect() as connection:
+    @override
+    def get_by_name_unsafe(self, name: str) -> Product:
+        with self._db_connection() as connection:
             result = connection.get_product_by_name(name)
         if not result:
-            raise KeyError('"%s" is not a valid Product name' % name)
+            raise KeyError(f'"{name}" is not a valid Product name')
         return self._make(result)
 
-    def get_with_fields(self, field_names):
-        """
-        Return dataset types that have all the given fields.
-
-        :param tuple[str] field_names:
-        :rtype: __generator[DatasetType]
-        """
-        for type_ in self.get_all():
-            for name in field_names:
-                if name not in type_.metadata_type.dataset_fields:
-                    break
-            else:
-                yield type_
-
-    def search_robust(self, **query):
+    @override
+    def search_robust(self, **query: QueryField):
         """
         Return dataset types that match match-able fields and dict of remaining un-matchable fields.
 
-        :param dict query:
-        :rtype: __generator[(DatasetType, dict)]
+        :param query:
         """
 
-        def _listify(v):
-            if isinstance(v, tuple):
+        def _listify(v) -> list:
+            if isinstance(v, tuple) and not isinstance(v, Not):
+                # Not is a namedtumple
                 return list(v)
-            elif isinstance(v, list):
+            if isinstance(v, list):
                 return v
-            else:
-                return [v]
+            return [v]
 
-        for type_ in self.get_all():
+        def _exclude(value: str, matching: list) -> bool:
+            # determine if product/metadata-types are non-matches, accounting for Not values
+            to_match = []
+            for m in matching:
+                if isinstance(m, Not):
+                    if not isinstance(mval := unnest_nots(m), Not):
+                        to_match.extend(_listify(mval))
+                    elif value in mval.value:
+                        return True
+                else:
+                    to_match.append(m)
+            # if to_match is empty, all the 'matching' values were 'Not's and we have a match
+            return len(to_match) > 0 and value not in to_match
+
+        all_products = list(self.get_all())
+        if not all_products:
+            _LOG.warning("No products in the database.")
+            return
+        for type_ in all_products:
             remaining_matchable = query.copy()
             # If they specified specific product/metadata-types, we can quickly skip non-matches.
-            if type_.name not in _listify(remaining_matchable.pop('product', type_.name)):
+            product = _listify(remaining_matchable.pop("product", []))
+            if product and _exclude(type_.name, product):
                 continue
-            if type_.metadata_type.name not in _listify(remaining_matchable.pop('metadata_type',
-                                                                                type_.metadata_type.name)):
+            metadata_type = _listify(remaining_matchable.pop("metadata_type", []))
+            if metadata_type and _exclude(type_.metadata_type.name, metadata_type):
                 continue
 
             # Check that all the keys they specified match this product.
@@ -280,7 +408,7 @@ class ProductResource(AbstractProductResource):
                 if not field:
                     # This type doesn't have that field, so it cannot match.
                     break
-                if not hasattr(field, 'extract'):
+                if not field.can_extract:
                     # non-document/native field
                     continue
                 if field.extract(type_.metadata_doc) is None:
@@ -297,19 +425,80 @@ class ProductResource(AbstractProductResource):
             else:
                 yield type_, remaining_matchable
 
-    def get_all(self) -> Iterable[DatasetType]:
+    @override
+    def search_by_metadata(self, metadata: dict) -> Generator[Product]:
+        """
+        Perform a search using arbitrary metadata, returning results as Product objects.
+
+        Caution - slow! This will usually not use indexes.
+
+        :param metadata:
+        """
+        with self._db_connection() as connection:
+            yield from self._make_many(connection.search_products_by_metadata(metadata))
+
+    @override
+    def get_all(self) -> Iterable[Product]:
         """
         Retrieve all Products
         """
-        with self._db.connect() as connection:
+        with self._db_connection() as connection:
             return (self._make(record) for record in connection.get_all_products())
 
-    def _make_many(self, query_rows):
+    @override
+    def get_all_docs(self) -> Iterable[JsonDict]:
+        """
+        Retrieve all Products
+        """
+        with self._db_connection() as connection:
+            for record in connection.get_all_product_docs():
+                yield record[0]
+
+    def _make_many(self, query_rows) -> Generator[Product]:
         return (self._make(c) for c in query_rows)
 
-    def _make(self, query_row) -> DatasetType:
-        return DatasetType(
-            definition=query_row['definition'],
-            metadata_type=self.metadata_type_resource.get(query_row['metadata_type_ref']),
-            id_=query_row['id'],
+    def _make(self, query_row) -> Product:
+        return Product(
+            definition=query_row.definition,
+            metadata_type=self._index.metadata_types.get_unsafe(
+                query_row.metadata_type_ref
+            ),
+            id_=query_row.id,
         )
+
+    @override
+    def spatial_extent(
+        self, product: str | Product, crs: CRS = CRS("EPSG:4326")
+    ) -> Geometry | None:
+        return None
+
+    @override
+    def temporal_extent(
+        self, product: str | Product
+    ) -> tuple[datetime.datetime, datetime.datetime]:
+        """
+        Returns the minimum and maximum acquisition time of the product.
+        """
+        if isinstance(product, str):
+            product = self._index.products.get_by_name_unsafe(product)
+
+        # This implementation violates architecture - should not be SQLAlchemy code at this level.
+        # Get the offsets from dataset doc
+        dataset_section = product.metadata_type.definition["dataset"]
+        min_offset = dataset_section["search_fields"]["time"]["min_offset"]
+        max_offset = dataset_section["search_fields"]["time"]["max_offset"]
+
+        assert product.id is not None
+        with self._db_connection() as connection:
+            return connection.temporal_extent_by_product(
+                product.id, min_offset, max_offset
+            )
+
+    @override
+    def most_recent_change(self, product: str | Product) -> datetime.datetime | None:
+        if isinstance(product, str):
+            product = self._index.products.get_by_name_unsafe(product)
+        assert isinstance(product, Product)
+        assert product.id is not None
+        with self._db_connection() as connection:
+            return connection.find_most_recent_change(product.id)

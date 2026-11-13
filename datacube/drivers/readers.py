@@ -1,18 +1,21 @@
 # This file is part of the Open Data Cube, see https://opendatacube.org for more information
 #
-# Copyright (c) 2015-2020 ODC Contributors
+# Copyright (c) 2015-2026 ODC Contributors
 # SPDX-License-Identifier: Apache-2.0
-from typing import List, Optional, Callable
-from .driver_cache import load_drivers
-from .datasource import DataSource
-from ._tools import singleton_setup
+from collections.abc import Callable
+from typing import TypeAlias
+
 from datacube.storage._base import BandInfo
 
-DatasourceFactory = Callable[[BandInfo], DataSource]  # pylint: disable=invalid-name
+from ._tools import singleton_setup
+from .datasource import DataSource
+from .driver_cache import load_drivers
+
+DatasourceFactory: TypeAlias = Callable[[BandInfo], DataSource]  # pylint: disable=invalid-name
 
 
-class ReaderDriverCache(object):
-    def __init__(self, group: str):
+class ReaderDriverCache:
+    def __init__(self, group: str) -> None:
         self._drivers = load_drivers(group)
 
         lookup = {}
@@ -29,9 +32,11 @@ class ReaderDriverCache(object):
         key = (uri_scheme.lower(), fmt.lower())
         return self._lookup.get(key)
 
-    def __call__(self, uri_scheme: str, fmt: str,
-                 fallback: Optional[DatasourceFactory] = None) -> DatasourceFactory:
-        """Lookup `new_datasource` constructor method from the driver. Returns
+    def __call__(
+        self, uri_scheme: str, fmt: str, fallback: DatasourceFactory | None = None
+    ) -> DatasourceFactory:
+        """
+        Lookup `new_datasource` constructor method from the driver. Returns
         `fallback` method if no driver is found.
 
         :param uri_scheme: Protocol part of the Dataset uri
@@ -43,31 +48,34 @@ class ReaderDriverCache(object):
             return driver.new_datasource
         if fallback is not None:
             return fallback
-        else:
-            raise KeyError("No driver found and no fallback provided")
+        raise KeyError("No driver found and no fallback provided")
 
-    def drivers(self) -> List[str]:
-        """ Returns list of driver names
+    def drivers(self) -> list[str]:
+        """
+        Returns list of driver names
         """
         return list(self._drivers.keys())
 
 
 def rdr_cache() -> ReaderDriverCache:
-    """ Singleton for ReaderDriverCache
     """
-    return singleton_setup(rdr_cache, '_instance',
-                           ReaderDriverCache,
-                           'datacube.plugins.io.read')
+    Singleton for ReaderDriverCache
+    """
+    return singleton_setup(
+        rdr_cache, "_instance", ReaderDriverCache, "datacube.plugins.io.read"
+    )
 
 
-def reader_drivers() -> List[str]:
-    """ Returns list driver names
+def reader_drivers() -> list[str]:
+    """
+    Returns list driver names
     """
     return rdr_cache().drivers()
 
 
 def choose_datasource(band: BandInfo) -> DatasourceFactory:
-    """Returns appropriate `DataSource` class (or a constructor method) for loading
+    """
+    Returns appropriate `DataSource` class (or a constructor method) for loading
     given `dataset`.
 
     An appropriate `DataSource` implementation is chosen based on:
@@ -78,14 +86,15 @@ def choose_datasource(band: BandInfo) -> DatasourceFactory:
     - Available IO plugins
 
     NOTE: we assume that all bands can be loaded with the same implementation.
-
     """
     from datacube.storage._rio import RasterDatasetDataSource
+
     return rdr_cache()(band.uri_scheme, band.format, fallback=RasterDatasetDataSource)
 
 
-def new_datasource(band: BandInfo) -> Optional[DataSource]:
-    """Returns a newly constructed data source to read dataset band data.
+def new_datasource(band: BandInfo) -> DataSource | None:
+    """
+    Returns a newly constructed data source to read dataset band data.
 
     An appropriate `DataSource` implementation is chosen based on:
 
@@ -97,11 +106,8 @@ def new_datasource(band: BandInfo) -> Optional[DataSource]:
     This function will return the default :class:`RasterDatasetDataSource` if no more specific
     ``DataSource`` can be found.
 
-    :param dataset: The dataset to read.
-    :param str band_name: the name of the band to read.
-
+    :param band: The band to choose data source from.
     """
-
     source_type = choose_datasource(band)
 
     if source_type is None:

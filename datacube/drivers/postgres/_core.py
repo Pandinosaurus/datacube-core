@@ -1,29 +1,84 @@
 # This file is part of the Open Data Cube, see https://opendatacube.org for more information
 #
-# Copyright (c) 2015-2020 ODC Contributors
+# Copyright (c) 2015-2026 ODC Contributors
 # SPDX-License-Identifier: Apache-2.0
 """
 Core SQL schema settings.
 """
 
+from __future__ import annotations
+
 import logging
+from typing import Self, override
 
-from datacube.drivers.postgres.sql import (INSTALL_TRIGGER_SQL_TEMPLATE,
-                                           SCHEMA_NAME, TYPES_INIT_SQL,
-                                           UPDATE_COLUMN_MIGRATE_SQL_TEMPLATE,
-                                           ADDED_COLUMN_MIGRATE_SQL_TEMPLATE,
-                                           UPDATE_TIMESTAMP_SQL,
-                                           escape_pg_identifier,
-                                           pg_column_exists, pg_exists)
-from sqlalchemy import MetaData
-from sqlalchemy.engine import Engine
-from sqlalchemy.schema import CreateSchema
+from sqlalchemy import MetaData, text
+
+from datacube.drivers.common_psql import (
+    UserRoleBase,
+    as_role,
+    catch_timeout,
+    create_schema,
+    ensure_role,
+    get_connection_info,
+    has_schema,
+    transfer_ownership,
+    transfers_required,
+)
+from datacube.drivers.common_psql.sql import INSTALL_TRIGGER_SQL_TEMPLATE
+from datacube.drivers.postgres.sql import (
+    ADDED_COLUMN_INDEX_SQL_TEMPLATE,
+    ADDED_COLUMN_MIGRATE_SQL_TEMPLATE,
+    SCHEMA_NAME,
+    TYPES_INIT_SQL,
+    UPDATE_COLUMN_INDEX_SQL_TEMPLATE,
+    UPDATE_COLUMN_MIGRATE_SQL_TEMPLATE,
+    UPDATE_TIMESTAMP_SQL,
+    pg_column_exists,
+)
+
+TYPE_CHECKING = False
+if TYPE_CHECKING:
+    from sqlalchemy.engine import Engine
 
 
-USER_ROLES = ('agdc_user', 'agdc_ingest', 'agdc_manage', 'agdc_admin')
+class UserRole(UserRoleBase):
+    USER = "agdc_user"
+    INGEST = "agdc_ingest"
+    MANAGE = "agdc_manage"
+    ADMIN = "agdc_admin"
+
+    @classmethod
+    @override
+    def to_pg_role(cls, role_str: str) -> Self:
+        return cls("agdc_" + role_str.lower())
+
+    @override
+    def higher_roles(self) -> list[Self]:
+        if self == UserRole.USER:
+            return [UserRole.INGEST, UserRole.MANAGE, UserRole.ADMIN]
+        if self == UserRole.INGEST:
+            return [UserRole.MANAGE, UserRole.ADMIN]
+        if self == UserRole.MANAGE:
+            return [UserRole.ADMIN]
+        return []
+
+    @override
+    def inherits_from(self) -> Self | None:
+        if self == UserRole.ADMIN:
+            return UserRole.MANAGE
+        if self == UserRole.MANAGE:
+            return UserRole.INGEST
+        if self == UserRole.INGEST:
+            return UserRole.USER
+        return None
+
+    @override
+    def can_create_user(self) -> bool:
+        return self == UserRole.ADMIN
+
 
 SQL_NAMING_CONVENTIONS = {
-    "ix": 'ix_%(column_0_label)s',
+    "ix": "ix_%(column_0_label)s",
     "uq": "uq_%(table_name)s_%(column_0_name)s",
     "ck": "ck_%(table_name)s_%(constraint_name)s",
     "fk": "fk_%(table_name)s_%(column_0_name)s_%(referred_table_name)s",
@@ -35,44 +90,66 @@ SQL_NAMING_CONVENTIONS = {
 
 METADATA = MetaData(naming_convention=SQL_NAMING_CONVENTIONS, schema=SCHEMA_NAME)
 
-_LOG = logging.getLogger(__name__)
+_LOG: logging.Logger = logging.getLogger(__name__)
 
 
-def install_timestamp_trigger(connection):
+def install_timestamp_trigger(connection) -> None:
     from . import _schema
-    TABLE_NAMES = [
+
+    TABLE_NAMES = [  # noqa: N806
         _schema.METADATA_TYPE.name,
         _schema.PRODUCT.name,
         _schema.DATASET.name,
     ]
     # Create trigger capture function
-    connection.execute(UPDATE_TIMESTAMP_SQL)
+    connection.execute(text(UPDATE_TIMESTAMP_SQL))
 
     for name in TABLE_NAMES:
         # Add update columns
-        connection.execute(UPDATE_COLUMN_MIGRATE_SQL_TEMPLATE.format(schema=SCHEMA_NAME, table=name))
-        connection.execute(INSTALL_TRIGGER_SQL_TEMPLATE.format(schema=SCHEMA_NAME, table=name))
+        connection.execute(
+            text(
+                UPDATE_COLUMN_MIGRATE_SQL_TEMPLATE.format(
+                    schema=SCHEMA_NAME, table=name
+                )
+            )
+        )
+        for s in INSTALL_TRIGGER_SQL_TEMPLATE:
+            connection.execute(text(s.format(schema=SCHEMA_NAME, table=name)))
 
-def install_added_column(connection):
+    # Add indexes for dataset table
+    ds_table = _schema.DATASET.name
+    connection.execute(
+        text(
+            UPDATE_COLUMN_INDEX_SQL_TEMPLATE.format(schema=SCHEMA_NAME, table=ds_table)
+        )
+    )
+    connection.execute(
+        text(ADDED_COLUMN_INDEX_SQL_TEMPLATE.format(schema=SCHEMA_NAME, table=ds_table))
+    )
+
+
+def install_added_column(connection) -> None:
     from . import _schema
-    TABLE_NAME = _schema.DATASET_LOCATION.name
-    connection.execute(ADDED_COLUMN_MIGRATE_SQL_TEMPLATE.format(schema=SCHEMA_NAME, table=TABLE_NAME))
+
+    TABLE_NAME = _schema.DATASET_LOCATION.name  # noqa: N806
+    connection.execute(
+        text(
+            ADDED_COLUMN_MIGRATE_SQL_TEMPLATE.format(
+                schema=SCHEMA_NAME, table=TABLE_NAME
+            )
+        )
+    )
 
 
-def schema_qualified(name):
+def schema_qualified(name: str) -> str:
     """
-    >>> schema_qualified('dataset')
+    >>> schema_qualified("dataset")
     'agdc.dataset'
     """
-    return '{}.{}'.format(SCHEMA_NAME, name)
+    return f"{SCHEMA_NAME}.{name}"
 
 
-def _get_quoted_connection_info(connection):
-    db, user = connection.execute("select quote_ident(current_database()), quote_ident(current_user)").fetchone()
-    return db, user
-
-
-def ensure_db(engine, with_permissions=True):
+def ensure_db(engine, with_permissions: bool = True) -> bool:
     """
     Initialise the db if needed.
 
@@ -80,75 +157,88 @@ def ensure_db(engine, with_permissions=True):
 
     Create the schema if it doesn't exist.
     """
-    is_new = False
-    c = engine.connect()
+    is_new = not has_schema(engine, SCHEMA_NAME)
+    with engine.connect() as c:
+        #  NB. Using default SQLA2.0 auto-begin commit-as-you-go behaviour
+        db_name, _ = get_connection_info(c)
 
-    quoted_db_name, quoted_user = _get_quoted_connection_info(c)
+        if with_permissions:
+            _LOG.info("Ensuring user roles.")
+            for ur in UserRole:
+                ensure_role(c, ur)
 
-    if with_permissions:
-        _LOG.info('Ensuring user roles.')
-        _ensure_role(c, 'agdc_user')
-        _ensure_role(c, 'agdc_ingest', inherits_from='agdc_user')
-        _ensure_role(c, 'agdc_manage', inherits_from='agdc_ingest')
-        _ensure_role(c, 'agdc_admin', inherits_from='agdc_manage', add_user=True)
+            c.execute(
+                text(f"""
+            grant all on database {db_name} to agdc_admin;
+            """)
+            )
+            c.commit()
 
-        c.execute("""
-        grant all on database {db} to agdc_admin;
-        """.format(db=quoted_db_name))
+        if is_new:
+            role = "agdc_admin" if with_permissions else None
+            with as_role(c, role) as c:
+                _LOG.info("Creating schema.")
+                create_schema(c, SCHEMA_NAME)
+                _LOG.info("Creating types.")
+                for s in TYPES_INIT_SQL:
+                    c.execute(text(s))
+                _LOG.info("Creating tables.")
+                METADATA.create_all(c)
+                _LOG.info("Creating triggers.")
+                install_timestamp_trigger(c)
+                _LOG.info("Creating added column.")
+                install_added_column(c)
+            c.commit()
 
-    if not has_schema(engine, c):
-        is_new = True
-        try:
-            c.execute('begin')
-            if with_permissions:
-                # Switch to 'agdc_admin', so that all items are owned by them.
-                c.execute('set role agdc_admin')
-            _LOG.info('Creating schema.')
-            c.execute(CreateSchema(SCHEMA_NAME))
-            _LOG.info('Creating tables.')
-            c.execute(TYPES_INIT_SQL)
-            METADATA.create_all(c)
-            _LOG.info("Creating triggers.")
-            install_timestamp_trigger(c)
-            _LOG.info("Creating added column.")
-            install_added_column(c)
-            c.execute('commit')
-        except:
-            c.execute('rollback')
-            raise
-        finally:
-            if with_permissions:
-                c.execute('set role {}'.format(quoted_user))
+        if with_permissions:
+            _LOG.info("Adding role grants.")
+            with as_role(c, "agdc_admin") as c:
+                c.execute(text(f"grant usage on schema {SCHEMA_NAME} to agdc_user"))
+                c.execute(
+                    text(
+                        f"grant select on all tables in schema {SCHEMA_NAME} to agdc_user"
+                    )
+                )
+                c.execute(
+                    text(
+                        f"grant execute on function {SCHEMA_NAME}.common_timestamp(text) to agdc_user"
+                    )
+                )
 
-    if with_permissions:
-        _LOG.info('Adding role grants.')
-        c.execute("""
-        grant usage on schema {schema} to agdc_user;
-        grant select on all tables in schema {schema} to agdc_user;
-        grant execute on function {schema}.common_timestamp(text) to agdc_user;
+                c.execute(
+                    text(
+                        f"grant insert on {SCHEMA_NAME}.dataset,"
+                        f"{SCHEMA_NAME}.dataset_location,"
+                        f"{SCHEMA_NAME}.dataset_source to agdc_ingest"
+                    )
+                )
+                c.execute(
+                    text(
+                        f"grant usage, select on all sequences in schema {SCHEMA_NAME} to agdc_ingest"
+                    )
+                )
 
-        grant insert on {schema}.dataset,
-                        {schema}.dataset_location,
-                        {schema}.dataset_source to agdc_ingest;
-        grant usage, select on all sequences in schema {schema} to agdc_ingest;
-
-        -- (We're only granting deletion of types that have nothing written yet: they can't delete the data itself)
-        grant insert, delete on {schema}.dataset_type,
-                                {schema}.metadata_type to agdc_manage;
-        -- Allow creation of indexes, views
-        grant create on schema {schema} to agdc_manage;
-        """.format(schema=SCHEMA_NAME))
-
-    c.close()
+                # We're only granting deletion of types that have nothing written yet:
+                #   they can't delete the data itself
+                c.execute(
+                    text(
+                        f"grant insert, delete on {SCHEMA_NAME}.dataset_type,"
+                        f"{SCHEMA_NAME}.metadata_type to agdc_manage"
+                    )
+                )
+                # Allow creation of indexes, views
+                c.execute(text(f"grant create on schema {SCHEMA_NAME} to agdc_manage"))
+            c.commit()
 
     return is_new
 
 
-def database_exists(engine):
+@catch_timeout
+def database_exists(engine) -> bool:
     """
-    Have they init'd this database?
+    Have they init'd this database? (Thin wrapper around ``has_schema()``)
     """
-    return has_schema(engine, engine)
+    return has_schema(engine, SCHEMA_NAME)
 
 
 def schema_is_latest(engine: Engine) -> bool:
@@ -158,7 +248,7 @@ def schema_is_latest(engine: Engine) -> bool:
     This is run when a new connection is established to see if it's compatible.
 
     It should be runnable by unprivileged users. If it returns false, their
-    connection will be rejected and they will be told to get an administrator
+    connection will be rejected, and they will be told to get an administrator
     to apply updates.
 
     See the ``update_schema()`` function below for actually applying the updates.
@@ -166,16 +256,17 @@ def schema_is_latest(engine: Engine) -> bool:
     # In lieu of a versioned schema, we typically check by seeing if one of the objects
     # from the change exists.
     #
-    # Eg.
-    #     return pg_column_exists(engine, schema_qualified('dataset_location'), 'archived')
+    # E.g.
+    #     return pg_column_exists(engine, 'dataset_location', 'archived')
     #
-    # ie. Does the 'archived' column exist? If so, we know the related schema was applied.
+    # i.e. Does the 'archived' column exist? If so, we know the related schema
+    # was applied.
 
     # No schema changes recently. Everything is perfect.
     return True
 
 
-def update_schema(engine: Engine):
+def update_schema(engine: Engine, with_permissions: bool) -> None:
     """
     Check and apply any missing schema changes to the database.
 
@@ -192,92 +283,60 @@ def update_schema(engine: Engine):
     #    function for some examples.
 
     # Post 1.8 DB Incremental Sync triggers
-    if not pg_column_exists(engine, schema_qualified('dataset'), 'updated'):
-        _LOG.info("Adding 'updated'/'added' fields and triggers to schema.")
-        c = engine.connect()
-        c.execute('begin')
-        install_timestamp_trigger(c)
-        install_added_column(c)
-        c.execute('commit')
-        c.close()
-    else:
-        _LOG.info("No schema updates required.")
+    with engine.connect() as connection:
+        updated = False
+        if with_permissions:
+            # ensure tables are all owned by agdc_admin
+            transfers = transfers_required(
+                conn=connection,
+                new_owner="agdc_admin",
+                schema=SCHEMA_NAME,
+                object_type="tables",
+                objects=[
+                    "metadata_type",
+                    "dataset_type",
+                    "dataset",
+                    "dataset_location",
+                    "dataset_source",
+                ],
+            )
+            if transfers:
+                for table, current_owner in transfers:
+                    transfer_ownership(
+                        conn=connection,
+                        schema=SCHEMA_NAME,
+                        obj_name=table,
+                        current_owner=current_owner,
+                        new_owner="agdc_admin",
+                        object_type="tables",
+                    )
 
+            # ensure dynamic views are all owned by agdc_manage
+            transfers = transfers_required(
+                conn=connection,
+                new_owner="agdc_manage",
+                schema=SCHEMA_NAME,
+                object_type="views",
+                prefix="dv_",
+            )
+            if transfers:
+                for view, current_owner in transfers:
+                    transfer_ownership(
+                        conn=connection,
+                        schema=SCHEMA_NAME,
+                        obj_name=view,
+                        current_owner=current_owner,
+                        new_owner="agdc_manage",
+                        object_type="views",
+                    )
 
-def _ensure_role(engine, name, inherits_from=None, add_user=False, create_db=False):
-    if has_role(engine, name):
-        _LOG.debug('Role exists: %s', name)
-        return
+        if not pg_column_exists(connection, "dataset", "updated"):
+            _LOG.info("Adding 'updated'/'added' fields and triggers to schema.")
+            with as_role(connection, "agdc_admin"):
+                install_timestamp_trigger(connection)
+                install_added_column(connection)
+                connection.commit()
+            updated = True
 
-    sql = [
-        'create role %s nologin inherit' % name,
-        'createrole' if add_user else 'nocreaterole',
-        'createdb' if create_db else 'nocreatedb'
-    ]
-    if inherits_from:
-        sql.append('in role ' + inherits_from)
-    engine.execute(' '.join(sql))
-
-
-def grant_role(engine, role, users):
-    if role not in USER_ROLES:
-        raise ValueError('Unknown role %r. Expected one of %r' % (role, USER_ROLES))
-
-    users = [escape_pg_identifier(engine, user) for user in users]
-    with engine.begin():
-        engine.execute('revoke {roles} from {users}'.format(users=', '.join(users), roles=', '.join(USER_ROLES)))
-        engine.execute('grant {role} to {users}'.format(users=', '.join(users), role=role))
-
-
-def has_role(conn, role_name):
-    return bool(conn.execute('SELECT rolname FROM pg_roles WHERE rolname=%s', role_name).fetchall())
-
-
-def has_schema(engine, connection):
-    return engine.dialect.has_schema(connection, SCHEMA_NAME)
-
-
-def drop_db(connection):
-    connection.execute('drop schema if exists %s cascade;' % SCHEMA_NAME)
-
-
-def to_pg_role(role):
-    """
-    Convert a role name to a name for use in PostgreSQL
-
-    There is a short list of valid ODC role names, and they are given
-    a prefix inside of PostgreSQL.
-
-    Why are we even doing this? Can't we use the same names internally and externally?
-
-    >>> to_pg_role('ingest')
-    'agdc_ingest'
-    >>> to_pg_role('fake')
-    Traceback (most recent call last):
-    ...
-    ValueError: Unknown role 'fake'. Expected one of ...
-    """
-    pg_role = 'agdc_' + role.lower()
-    if pg_role not in USER_ROLES:
-        raise ValueError(
-            'Unknown role %r. Expected one of %r' %
-            (role, [r.split('_')[1] for r in USER_ROLES])
-        )
-    return pg_role
-
-
-def from_pg_role(pg_role):
-    """
-    Convert a PostgreSQL role name back to an ODC name.
-
-    >>> from_pg_role('agdc_admin')
-    'admin'
-    >>> from_pg_role('fake')
-    Traceback (most recent call last):
-    ...
-    ValueError: Not a pg role: 'fake'. Expected one of ...
-    """
-    if pg_role not in USER_ROLES:
-        raise ValueError('Not a pg role: %r. Expected one of %r' % (pg_role, USER_ROLES))
-
-    return pg_role.split('_')[1]
+        if not updated:
+            _LOG.info("No schema updates required.")

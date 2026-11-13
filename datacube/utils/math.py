@@ -1,20 +1,30 @@
 # This file is part of the Open Data Cube, see https://opendatacube.org for more information
 #
-# Copyright (c) 2015-2020 ODC Contributors
+# Copyright (c) 2015-2026 ODC Contributors
 # SPDX-License-Identifier: Apache-2.0
-from typing import Tuple, Union, Optional, Any, cast
-from math import ceil, fmod
+from __future__ import annotations
+
+from math import ceil
+from typing import Any
 
 import numpy
+import odc.geo.math as geomath
 import xarray as xr
-from affine import Affine
+from deprecat import deprecat
+from odc.geo.xr import spatial_dims as xr_spatial_dims
+
+from datacube.migration import ODC2DeprecationWarning
+
+TYPE_CHECKING = False
+if TYPE_CHECKING:
+    from collections.abc import Generator
+
+    from odc.geo import SomeResolution
 
 
-def unsqueeze_data_array(da: xr.DataArray,
-                         dim: str,
-                         pos: int,
-                         coord: Any = 0,
-                         attrs: Optional[dict] = None) -> xr.DataArray:
+def unsqueeze_data_array(
+    da: xr.DataArray, dim: str, pos: int, coord: Any = 0, attrs: dict | None = None
+) -> xr.DataArray:
     """
     Add a 1-length dimension to a data array.
 
@@ -27,119 +37,80 @@ def unsqueeze_data_array(da: xr.DataArray,
     """
     new_dims = list(da.dims)
     new_dims.insert(pos, dim)
-    new_shape = da.data.shape[:pos] + (1,) + da.data.shape[pos:]
+    new_shape = (*da.data.shape[:pos], 1, *da.data.shape[pos:])
     new_data = da.data.reshape(new_shape)
-    new_coords = {k: v for k, v in da.coords.items()}
+    new_coords = dict(da.coords.items())
     new_coords[dim] = xr.DataArray([coord], dims=[dim], attrs=attrs)
     return xr.DataArray(new_data, dims=new_dims, coords=new_coords, attrs=da.attrs)
 
 
-def unsqueeze_dataset(ds: xr.Dataset, dim: str, coord: int = 0, pos: int = 0) -> xr.Dataset:
-    ds = ds.map(unsqueeze_data_array, dim=dim, pos=pos, keep_attrs=True, coord=coord)
-    return ds
+def unsqueeze_dataset(
+    ds: xr.Dataset, dim: str, coord: int = 0, pos: int = 0
+) -> xr.Dataset:
+    return ds.map(unsqueeze_data_array, dim=dim, pos=pos, keep_attrs=True, coord=coord)
 
 
-def spatial_dims(xx: Union[xr.DataArray, xr.Dataset],
-                 relaxed: bool = False) -> Optional[Tuple[str, str]]:
-    """ Find spatial dimensions of `xx`.
-
-        Checks for presence of dimensions named:
-          y, x | latitude, longitude | lat, lon
-
-        Returns
-        =======
-        None -- if no dimensions with expected names are found
-        ('y', 'x') | ('latitude', 'longitude') | ('lat', 'lon')
-
-        If *relaxed* is True and none of the above dimension names are found,
-        assume that last two dimensions are spatial dimensions.
-    """
-    guesses = [('y', 'x'),
-               ('latitude', 'longitude'),
-               ('lat', 'lon')]
-
-    dims = set(xx.dims)
-    for guess in guesses:
-        if dims.issuperset(guess):
-            return guess
-
-    if relaxed and len(xx.dims) >= 2:
-        return cast(Tuple[str, str], xx.dims[-2:])
-
-    return None
+@deprecat(
+    reason="This method has been moved to odc-geo.",
+    version="1.9.0",
+    category=ODC2DeprecationWarning,
+)
+def spatial_dims(
+    xx: xr.DataArray | xr.Dataset, relaxed: bool = False
+) -> tuple[str, str] | None:
+    return xr_spatial_dims(xx, relaxed)
 
 
+@deprecat(
+    reason="This method has been moved to odc-geo.",
+    version="1.9.0",
+    category=ODC2DeprecationWarning,
+)
 def maybe_zero(x: float, tol: float) -> float:
-    """ Turn almost zeros to actual zeros
-    """
-    if abs(x) < tol:
-        return 0
-    return x
+    return geomath.maybe_zero(x, tol)
 
 
-def maybe_int(x: float, tol: float) -> Union[int, float]:
-    """ Turn almost ints to actual ints, pass through other values unmodified
-    """
-    def split(x):
-        x_part = fmod(x, 1.0)
-        x_whole = x - x_part
-        if x_part > 0.5:
-            x_part -= 1
-            x_whole += 1
-        elif x_part < -0.5:
-            x_part += 1
-            x_whole -= 1
-        return (x_whole, x_part)
-
-    x_whole, x_part = split(x)
-
-    if abs(x_part) < tol:  # almost int
-        return int(x_whole)
-    else:
-        return x
+@deprecat(
+    reason="This method has been moved to odc-geo.",
+    version="1.9.0",
+    category=ODC2DeprecationWarning,
+)
+def maybe_int(x: float, tol: float) -> int | float:
+    return geomath.maybe_int(x, tol)
 
 
-def snap_scale(s, tol=1e-6):
-    """ Snap scale to the nearest integer and simple fractions in the form 1/<int>
-    """
-    if abs(s) >= 1 - tol:
-        return maybe_int(s, tol)
-    else:
-        # Check of s is 0
-        if abs(s) < tol:
-            return s
-
-        # Check for simple fractions
-        s_inv = 1 / s
-        s_inv_snapped = maybe_int(s_inv, tol)
-        if s_inv_snapped is s_inv:
-            return s
-        return 1 / s_inv_snapped
+@deprecat(
+    reason="This method has been moved to odc-geo.",
+    version="1.9.0",
+    category=ODC2DeprecationWarning,
+)
+def snap_scale(s, tol: float = 1e-6):
+    return geomath.snap_scale(s, tol)
 
 
+@deprecat(
+    reason="This method has been moved to odc-geo.",
+    version="1.9.0",
+    category=ODC2DeprecationWarning,
+)
 def clamp(x, lo, up):
-    """
-    clamp x to be lo <= x <= up
-    """
-    assert lo <= up
-    return lo if x < lo else up if x > up else x
+    return geomath.clamp(x, lo, up)
 
 
+@deprecat(
+    reason="This method has been moved to odc-geo.",
+    version="1.9.0",
+    category=ODC2DeprecationWarning,
+)
 def is_almost_int(x: float, tol: float):
-    """
-    Check if number is close enough to an integer
-    """
-    x = abs(fmod(x, 1))
-    if x > 0.5:
-        x = 1 - x
-    return x < tol
+    return geomath.is_almost_int(x, tol)
 
 
 def dtype_is_float(dtype) -> bool:
     """
     Check if `dtype` is floating-point.
     """
-    return numpy.dtype(dtype).kind == 'f'
+    return numpy.dtype(dtype).kind == "f"
 
 
 def valid_mask(xx, nodata):
@@ -170,13 +141,18 @@ def invalid_mask(xx, nodata):
     return xx == nodata
 
 
-def num2numpy(x, dtype, ignore_range=None):
+def num2numpy(
+    x: int | float | None,
+    dtype: str | type[numpy.float32 | numpy.float64] | numpy.dtype,
+    ignore_range: bool | None = None,
+) -> numpy.float32 | numpy.float64 | numpy.dtype | None:
     """
     Cast python numeric value to numpy.
 
-    :param x int|float: Numerical value to convert to numpy.type
-    :param dtype str|numpy.dtype|numpy.type: Destination dtype
+    :param x: Numerical value to convert to numpy.type
+    :param dtype: Destination dtype
     :param ignore_range: If set to True skip range check and cast anyway (for example: -1 -> 255)
+                         (Not supported in numpy 2.0+)
 
     :returns: None if x is None
     :returns: None if x is outside the valid range of dtype and ignore_range is not set
@@ -185,10 +161,10 @@ def num2numpy(x, dtype, ignore_range=None):
     if x is None:
         return None
 
-    if isinstance(dtype, (str, type)):
+    if isinstance(dtype, str | type):
         dtype = numpy.dtype(dtype)
 
-    if ignore_range or dtype.kind == 'f':
+    if ignore_range or dtype.kind == "f":
         return dtype.type(x)
 
     info = numpy.iinfo(dtype)
@@ -198,68 +174,27 @@ def num2numpy(x, dtype, ignore_range=None):
     return None
 
 
-def data_resolution_and_offset(data, fallback_resolution=None):
-    """ Compute resolution and offset from x/y axis data.
-
-        Only uses first two coordinate values, assumes that data is regularly
-        sampled.
-
-        Returns
-        =======
-        (resolution: float, offset: float)
-    """
-    if data.size < 2:
-        if data.size < 1:
-            raise ValueError("Can't calculate resolution for empty data")
-        if fallback_resolution is None:
-            raise ValueError("Can't calculate resolution with data size < 2")
-        res = fallback_resolution
-    else:
-        res = (data[data.size - 1] - data[0]) / (data.size - 1.0)
-        res = res.item()
-
-    off = data[0] - 0.5 * res
-    return res, off.item()
+@deprecat(
+    reason="This method has been moved to odc-geo.",
+    version="1.9.0",
+    category=ODC2DeprecationWarning,
+)
+def data_resolution_and_offset(data, fallback_resolution: float | None = None):
+    return geomath.data_resolution_and_offset(data, fallback_resolution)
 
 
-def affine_from_axis(xx, yy, fallback_resolution=None):
-    """ Compute Affine transform from pixel to real space given X,Y coordinates.
-
-        :param xx: X axis coordinates
-        :param yy: Y axis coordinates
-        :param fallback_resolution: None|float|(resx:float, resy:float) resolution to
-                                    assume for single element axis.
-
-        (0, 0) in pixel space is defined as top left corner of the top left pixel
-            \
-            `` 0   1
-             +---+---+
-           0 |   |   |
-             +---+---+
-           1 |   |   |
-             +---+---+
-
-        Only uses first two coordinate values, assumes that data is regularly
-        sampled.
-
-        raises ValueError when any axis is empty
-        raises ValueError when any axis has single value and fallback resolution was not supplied.
-    """
-    if fallback_resolution is not None:
-        if isinstance(fallback_resolution, (float, int)):
-            frx, fry = fallback_resolution, fallback_resolution
-        else:
-            frx, fry = fallback_resolution
-    else:
-        frx, fry = None, None
-
-    xres, xoff = data_resolution_and_offset(xx, frx)
-    yres, yoff = data_resolution_and_offset(yy, fry)
-
-    return Affine.translation(xoff, yoff) * Affine.scale(xres, yres)
+@deprecat(
+    reason="This method has been moved to odc-geo.",
+    version="1.9.0",
+    category=ODC2DeprecationWarning,
+)
+def affine_from_axis(xx, yy, fallback_resolution: SomeResolution | None = None):
+    return geomath.affine_from_axis(xx, yy, fallback_resolution)
 
 
-def iter_slices(shape, chunk_size):
+def iter_slices(
+    shape: tuple[int, ...], chunk_size: tuple[int, ...]
+) -> Generator[tuple]:
     """
     Generate slices for a given shape.
 
@@ -268,15 +203,17 @@ def iter_slices(shape, chunk_size):
 
     If the shape is not divisible by the chunk_size, the last chunk in each dimension will be smaller.
 
-    :param tuple(int) shape: Shape of an array
-    :param tuple(int) chunk_size: length of each slice for each dimension
+    :param shape: Shape of an array
+    :param chunk_size: length of each slice for each dimension
     :return: Yields slices that can be used on an array of the given shape
 
     >>> list(iter_slices((5,), (2,)))
     [(slice(0, 2, None),), (slice(2, 4, None),), (slice(4, 5, None),)]
     """
     assert len(shape) == len(chunk_size)
-    num_grid_chunks = [int(ceil(s / float(c))) for s, c in zip(shape, chunk_size)]
+    num_grid_chunks = [ceil(s / float(c)) for s, c in zip(shape, chunk_size)]
     for grid_index in numpy.ndindex(*num_grid_chunks):
         yield tuple(
-            slice(min(d * c, stop), min((d + 1) * c, stop)) for d, c, stop in zip(grid_index, chunk_size, shape))
+            slice(min(d * c, stop), min((d + 1) * c, stop))
+            for d, c, stop in zip(grid_index, chunk_size, shape)
+        )

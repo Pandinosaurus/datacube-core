@@ -1,7 +1,21 @@
 Open Data Cube Core
 ===================
 
-|Build Status| |Coverage Status| |Documentation Status|
+.. image:: https://github.com/opendatacube/datacube-core/actions/workflows/main.yml/badge.svg
+    :alt: Build Status
+    :target: https://github.com/opendatacube/datacube-core/actions
+
+.. image:: https://codecov.io/gh/opendatacube/datacube-core/branch/develop/graph/badge.svg
+    :alt: Coverage Status
+    :target: https://codecov.io/gh/opendatacube/datacube-core
+
+.. image:: https://app.readthedocs.org/projects/opendatacube/badge/?version=latest
+    :alt: Documentation Status
+    :target: https://opendatacube.readthedocs.org/en/latest/
+
+.. image:: https://img.shields.io/discord/1212501566326571070?label=Discord&logo=discord&logoColor=white&color=7289DA)](https://discord.gg/4hhBQVas5U
+    :alt: Discord
+    :target: https://discord.com/invite/4hhBQVas5U
 
 Overview
 ========
@@ -14,14 +28,18 @@ systems.
 Documentation
 =============
 
-See the `user guide <http://datacube-core.readthedocs.io/en/latest/>`__ for
+See the `user guide <https://opendatacube.readthedocs.io/en/latest/>`__ for
 installation and usage of the datacube, and for documentation of the API.
 
-`Join our Slack <http://slack.opendatacube.org>`__ if you need help
+`Join our Discord <https://discord.com/invite/4hhBQVas5U>`__ if you need help
 setting up or using the Open Data Cube.
 
 Please help us to keep the Open Data Cube community open and inclusive by
 reading and following our `Code of Conduct <code-of-conduct.md>`__.
+
+This is a ``1.9.x`` series release of the Open Data Cube.  If you are migrating from a ``1.8.x``
+series release, please refer to the
+`1.8.x to 1.9.x Migration Notes <https://opendatacube.readthedocs.io/en/latest/installation/MIGRATION-1.8-to-1.9.html>`_.
 
 Requirements
 ============
@@ -29,8 +47,8 @@ Requirements
 System
 ~~~~~~
 
--  PostgreSQL 10+
--  Python 3.8+
+-  PostgreSQL 15+
+-  Python 3.10+
 
 Developer setup
 ===============
@@ -39,20 +57,20 @@ Developer setup
 
    -  ``git clone https://github.com/opendatacube/datacube-core.git``
 
-2. Create a Python environment for using the ODC.  We recommend `conda <https://docs.conda.io/en/latest/miniconda.html>`__ as the
+2. Create a Python environment for using the ODC.  We recommend `Mambaforge <https://mamba.readthedocs.io/en/latest/user_guide/mamba.html>`__ as the
    easiest way to handle Python dependencies.
 
 ::
 
-   conda create -n odc -c conda-forge python=3.8 datacube pre_commit
-   conda activate odc
+   mamba env create -f conda-environment.yml
+   conda activate cubeenv
 
 3. Install a develop version of datacube-core.
 
 ::
 
    cd datacube-core
-   pip install --upgrade -e .
+   pip install --upgrade -e .  --group dev
 
 4. Install the `pre-commit <https://pre-commit.com>`__ hooks to help follow ODC coding
    conventions when committing with git.
@@ -62,25 +80,32 @@ Developer setup
    pre-commit install
 
 5. Run unit tests + PyLint
+
+Install test dependencies using:
+
+   ``pip install --upgrade -e '.' --group dev``
+
+If install for these fails, please lodge them as issues.
+
+Run unit tests with:
+
    ``./check-code.sh``
 
-   (this script approximates what is run by Travis. You can
-   alternatively run ``pytest`` yourself). Some test dependencies may need to be installed, attempt to install these using:
-   
-   ``pip install --upgrade -e '.[test]'``
-   
-   If install for these fails please lodge them as issues.
+   (this script approximates what is run by GitHub Actions. You can
+   alternatively run ``pytest`` yourself).
 
 6. **(or)** Run all tests, including integration tests.
 
    ``./check-code.sh integration_tests``
 
-   -  Assumes a password-less Postgres database running on localhost called
+   -  Assumes the existence of two password-less Postgres databases running on localhost called
+      ``pgintegration`` and ``pgisintegration``.
 
-   ``agdcintegration``
-
-   -  Otherwise copy ``integration_tests/agdcintegration.conf`` to
+   -  Otherwise copy ``integration_tests/integration.conf`` to
       ``~/.datacube_integration.conf`` and edit to customise.
+
+   - For instructions on setting up a password-less Postgres database, see
+      the `developer setup instructions <https://opendatacube.readthedocs.io/en/latest/installation/setup/ubuntu.html#postgres-testing-database-configuration>`__.
 
 
 Alternatively one can use the ``opendatacube/datacube-tests`` docker image to run
@@ -93,6 +118,15 @@ to ``./check-code.sh`` script.
    ./check-code.sh --with-docker integration_tests
 
 
+To run individual tests in a docker container
+
+::
+
+    docker build --tag=opendatacube/datacube-tests-local --no-cache --progress plain -f docker/Dockerfile .
+
+    docker run -ti -v $(pwd):/code opendatacube/datacube-tests-local:latest pytest integration_tests/test_filename.py::test_function_name
+
+
 Developer setup on Ubuntu
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -102,34 +136,25 @@ Install dependencies:
 
 ::
 
-   sudo apt-get update
-   sudo apt-get install -y \
-     autoconf automake build-essential make cmake \
-     graphviz \
-     python3-venv \
-     python3-dev \
-     libpq-dev \
-     libyaml-dev \
-     libnetcdf-dev \
-     libudunits2-dev
+    sudo apt-get update
+    sudo apt-get install -y \
+        autoconf automake build-essential make cmake \
+        graphviz \
+        python3-venv \
+        python3-dev \
+        libpq-dev \
+        libyaml-dev \
+        libnetcdf-dev \
+        libudunits2-dev
 
 
 Build the python virtual environment:
 
 ::
 
-   pyenv="${HOME}/.envs/odc"  # Change to suit your needs
-   mkdir -p "${pyenv}"
-   python3 -m venv "${pyenv}"
-   source "${pyenv}/bin/activate"
-   pip install -U pip wheel cython numpy
-   pip install -e '.[dev]'
-   pip install flake8 mypy pylint autoflake black
-
-
-.. |Build Status| image:: https://github.com/opendatacube/datacube-core/workflows/build/badge.svg
-   :target: https://github.com/opendatacube/datacube-core/actions
-.. |Coverage Status| image:: https://codecov.io/gh/opendatacube/datacube-core/branch/develop/graph/badge.svg
-   :target: https://codecov.io/gh/opendatacube/datacube-core
-.. |Documentation Status| image:: https://readthedocs.org/projects/datacube-core/badge/?version=latest
-   :target: http://datacube-core.readthedocs.org/en/latest/
+    pyenv="${HOME}/.envs/odc"  # Change to suit your needs
+    mkdir -p "${pyenv}"
+    python3 -m venv "${pyenv}"
+    source "${pyenv}/bin/activate"
+    pip install -U pip wheel cython numpy
+    pip install -e '.' --group dev

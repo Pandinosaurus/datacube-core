@@ -1,24 +1,37 @@
 # This file is part of the Open Data Cube, see https://opendatacube.org for more information
 #
-# Copyright (c) 2015-2020 ODC Contributors
+# Copyright (c) 2015-2026 ODC Contributors
 # SPDX-License-Identifier: Apache-2.0
+from __future__ import annotations
+
 import itertools
 import threading
-from typing import Any
+from typing import Any, TypeVar
+
+TYPE_CHECKING = False
+if TYPE_CHECKING:
+    from collections.abc import Callable, Generator, Iterable, Iterator
+    from queue import Queue
 
 EOS = object()
 _LCL = threading.local()
 
-__all__ = (
+__all__ = [
     "EOS",
+    "it2q",
     "map_with_lookahead",
     "qmap",
-    "it2q",
     "thread_local_cache",
-)
+]
+
+T = TypeVar("T")
 
 
-def map_with_lookahead(it, if_one=None, if_many=None):
+def map_with_lookahead[T1, T2](
+    it: Iterable[T1],
+    if_one: Callable[[T1], T2] | None = None,
+    if_many: Callable[[T1], T2] | None = None,
+) -> Generator[T2]:
     """
     It's like normal map: creates a new generator by applying a function to every
     element of the original generator, but it applies `if_one` transform for
@@ -32,10 +45,12 @@ def map_with_lookahead(it, if_one=None, if_many=None):
     :param it: Sequence to iterate over
     :param if_one: Function to apply for single element sequences
     :param if_many: Function to apply for multi-element sequences
-
     """
-    if_one = if_one or (lambda x: x)
-    if_many = if_many or (lambda x: x)
+    # Need to bind the identity function to a variable for MyPy to figure things out.
+    # This saves allocation of a closure too though, so this is actually better.
+    identity = lambda x: x  # noqa: E731
+    if_one = if_one or identity
+    if_many = if_many or identity
 
     it = iter(it)
     p1 = list(itertools.islice(it, 2))
@@ -45,8 +60,8 @@ def map_with_lookahead(it, if_one=None, if_many=None):
         yield proc(v)
 
 
-def qmap(func, q, eos_marker=EOS):
-    """ Converts queue to an iterator.
+def qmap(func, q: Queue, eos_marker: object = EOS) -> Generator:
+    """Converts queue to an iterator.
 
     For every `item` in the `q` that is not `eos_marker`, `yield proc(item)`
 
@@ -64,10 +79,10 @@ def qmap(func, q, eos_marker=EOS):
                 q.task_done()
 
 
-def it2q(its, q, eos_marker=EOS):
-    """ Convert iterator into a Queue
+def it2q(its: Iterator, q: Queue, eos_marker: object = EOS) -> None:
+    """Convert iterator into a Queue
 
-        [1, 2, 3] => [1, 2, 3, eos_marker]
+    [1, 2, 3] => [1, 2, 3, eos_marker]
     """
     try:
         for x in its:
@@ -76,10 +91,10 @@ def it2q(its, q, eos_marker=EOS):
         q.put(eos_marker, block=True)
 
 
-def thread_local_cache(name: str,
-                       initial_value: Any = None,
-                       purge: bool = False) -> Any:
-    """ Define/get thread local object with a given name.
+def thread_local_cache(
+    name: str, initial_value: Any = None, purge: bool = False
+) -> Any:
+    """Define/get thread local object with a given name.
 
     :param name:          name for this cache
     :param initial_value: Initial value if not set for this thread

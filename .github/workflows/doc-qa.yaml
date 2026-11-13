@@ -1,0 +1,48 @@
+name: Doc QA
+on:
+  # Triggers the workflow on push or pull request events but only for the main branch
+  push:
+    branches:
+      - 'develop'
+  pull_request:
+    paths:
+      - '**'
+
+permissions: {}
+
+# When a PR is updated, cancel the jobs from the previous version. Merges
+# do not define head_ref, so use run_id to never cancel those jobs.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  doctor-rst:
+    timeout-minutes: 15
+    name: Lint (DOCtor-RST)
+    runs-on: ubuntu-latest
+    steps:
+      -   name: "Checkout"
+          uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+          with:
+            persist-credentials: false
+
+      -   name: "Create cache dir"
+          run: mkdir .cache
+
+      -   name: "Extract base branch name"
+          run: echo "branch=${GITHUB_BASE_REF:-${GITHUB_REF##*/}}"
+          id: extract_base_branch
+
+      -   name: "Cache DOCtor-RST"
+          uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+          with:
+              path: .cache
+              key: doctor-rst-${{ runner.os }}-${{ steps.extract_base_branch.outputs.branch }}
+
+      -   name: "Run DOCtor-RST"
+          uses: docker://oskarstark/doctor-rst:1.67.0@sha256:f2f7edaccb98bd664595475cecd62ebbab8d9f68495310f6765cf6f2e6dc5d01
+          with:
+              args: --short --error-format=github --cache-file=/github/workspace/.cache/doctor-rst.cache
+          env:
+              DOCS_DIR: 'docs/'

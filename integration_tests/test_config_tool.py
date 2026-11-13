@@ -1,212 +1,250 @@
 # This file is part of the Open Data Cube, see https://opendatacube.org for more information
 #
-# Copyright (c) 2015-2020 ODC Contributors
+# Copyright (c) 2015-2026 ODC Contributors
 # SPDX-License-Identifier: Apache-2.0
 """
 Module
 """
+
+from __future__ import annotations
+
 import logging
 import random
-import re
 from pathlib import Path
 
 import pytest
 
-from datacube.drivers.postgres import _dynamic
-from datacube.drivers.postgres._core import drop_db, has_schema, SCHEMA_NAME
+from datacube.cfg import psql_url_from_config
 
-EXAMPLE_DATASET_TYPE_DOCS = map(str, Path(__file__).parent.parent.
-                                joinpath('docs', 'config_samples', 'dataset_types').glob('**/*.yaml'))
+TYPE_CHECKING = False
+if TYPE_CHECKING:
+    from collections.abc import Generator
+
+EXAMPLE_DATASET_TYPE_DOCS = list(
+    map(
+        str,
+        Path(__file__)
+        .parent.parent.joinpath("docs", "source", "config_samples", "dataset_types")
+        .glob("**/*.yaml"),
+    )
+)
+assert len(EXAMPLE_DATASET_TYPE_DOCS) > 0
 
 # Documents that shouldn't be accepted as mapping docs.
-INVALID_MAPPING_DOCS = map(str, Path(__file__).parent.parent.joinpath('docs').glob('*'))
+INVALID_MAPPING_DOCS = list(
+    map(str, Path(__file__).parent.parent.joinpath("docs").glob("*"))
+)
+assert len(INVALID_MAPPING_DOCS) > 0
 
 
-def _dataset_type_count(db):
-    with db.connect() as connection:
+def _dataset_type_count(index) -> int:
+    with index._active_connection() as connection:
         return len(list(connection.get_all_products()))
 
 
-def test_add_example_dataset_types(clirunner, initialised_postgres_db, default_metadata_type):
+def test_add_example_dataset_types(
+    clirunner, index, default_metadata_type, eo3_product_paths, ext_eo3_mdt_path
+) -> None:
     """
     Add example mapping docs, to ensure they're valid and up-to-date.
 
     We add them all to a single database to check for things like duplicate ids.
-
-    :type initialised_postgres_db: datacube.drivers.postgres._connections.PostgresDb
     """
-    existing_mappings = _dataset_type_count(initialised_postgres_db)
+    existing_mappings = _dataset_type_count(index)
 
-    print('{} mappings'.format(existing_mappings))
-    for mapping_path in EXAMPLE_DATASET_TYPE_DOCS:
-        print('Adding mapping {}'.format(mapping_path))
+    if index.supports_legacy:
+        # Legacy EO test examples
+        print(f"{existing_mappings} mappings")
+        for mapping_path in EXAMPLE_DATASET_TYPE_DOCS:
+            print(f"Adding mapping {mapping_path}")
 
-        result = clirunner(['-v', 'product', 'add', mapping_path])
-        assert result.exit_code == 0
+            result = clirunner(["-v", "product", "add", mapping_path])
+            assert result.exit_code == 0, f"Output: {result.output}"
 
-        mappings_count = _dataset_type_count(initialised_postgres_db)
-        assert mappings_count > existing_mappings, "Mapping document was not added: " + str(mapping_path)
+            mappings_count = _dataset_type_count(index)
+            assert mappings_count > existing_mappings, (
+                "Mapping document was not added: " + str(mapping_path)
+            )
+            existing_mappings = mappings_count
+
+        result = clirunner(["-v", "metadata", "show", "-f", "json", "eo"])
+        assert result.exit_code == 0, f"Output: {result.output}"
+
+    # EO3 test examples
+    result = clirunner(["-v", "metadata", "add", ext_eo3_mdt_path])
+    assert result.exit_code == 0, f"Output: {result.output}"
+
+    for path in eo3_product_paths:
+        result = clirunner(["-v", "product", "add", path])
+        assert result.exit_code == 0, f"Output: {result.output}"
+
+        mappings_count = _dataset_type_count(index)
+        assert mappings_count > existing_mappings, (
+            "Mapping document was not added: " + str(path)
+        )
         existing_mappings = mappings_count
 
-    result = clirunner(['-v', 'metadata', 'list'])
-    assert result.exit_code == 0
+    result = clirunner(["-v", "metadata", "show", "-f", "json", "eo3"])
+    assert result.exit_code == 0, f"Output: {result.output}"
 
-    result = clirunner(['-v', 'metadata', 'show', '-f', 'json', 'eo'],
-                       expect_success=True)
-    assert result.exit_code == 0
+    result = clirunner(["-v", "metadata", "list"])
+    assert result.exit_code == 0, f"Output: {result.output}"
 
-    result = clirunner(['-v', 'metadata', 'show'],
-                       expect_success=True)
-    assert result.exit_code == 0
+    result = clirunner(["-v", "metadata", "show"])
+    assert result.exit_code == 0, f"Output: {result.output}"
 
-    result = clirunner(['-v', 'product', 'list'])
-    assert result.exit_code == 0
+    result = clirunner(["-v", "product", "list"])
+    assert result.exit_code == 0, f"Output: {result.output}"
 
     expect_result = 0 if existing_mappings > 0 else 1
-    result = clirunner(['-v', 'product', 'show'],
-                       expect_success=(expect_result == 0))
-    assert result.exit_code == expect_result
+    result = clirunner(["-v", "product", "show"], expect_success=(expect_result == 0))
+    assert result.exit_code == expect_result, f"Output: {result.output}"
 
     if existing_mappings > 1:
-        result = clirunner(['-v', 'product', 'show', '-f', 'json'],
-                           expect_success=False)
-        assert result.exit_code == 1
+        result = clirunner(
+            ["-v", "product", "show", "-f", "json"], expect_success=False
+        )
+        assert result.exit_code == 1, f"Output: {result.output}"
 
-        result = clirunner(['-v', 'product', 'show', '-f', 'json', 'ls8_level1_usgs'],
-                           expect_success=False)
-        assert result.exit_code == 0
+        result = clirunner(["-v", "product", "show", "-f", "json", "ga_ls8c_ard_3"])
+        assert result.exit_code == 0, f"Output: {result.output}"
 
-        result = clirunner(['-v', 'product', 'show', '-f', 'yaml', 'ls8_level1_usgs'],
-                           expect_success=False)
-        assert result.exit_code == 0
+        result = clirunner(["-v", "product", "show", "-f", "yaml", "ga_ls8c_ard_3"])
+        assert result.exit_code == 0, f"Output: {result.output}"
 
 
-def test_error_returned_on_invalid(clirunner, initialised_postgres_db):
-    """
-    :type initialised_postgres_db: datacube.drivers.postgres._connections.PostgresDb
-    """
-    assert _dataset_type_count(initialised_postgres_db) == 0
+@pytest.mark.parametrize("db_tz", ("UTC",), indirect=True)
+@pytest.mark.parametrize("datacube_env_name", ("postgis3",), indirect=True)
+def test_cli_errors(clirunner, index) -> None:
+    for op in [["delete"], ["grant", "user"]]:
+        r = clirunner(["user", *op], expect_success=False)
+        assert r.exit_code != 0, f"Output: {r.output}"
+        assert "No users specified" in r.stdout
+
+    assert _dataset_type_count(index) == 0
 
     for mapping_path in INVALID_MAPPING_DOCS:
         result = clirunner(
-            [
-                'product', 'add', mapping_path
-            ],
+            ["product", "add", mapping_path],
             # TODO: Make this false when the cli is updated to print errors (rather than uncaught exceptions).
             catch_exceptions=True,
-            expect_success=False
+            expect_success=False,
         )
-        assert result.exit_code != 0, "Success return code for invalid document."
-        assert _dataset_type_count(initialised_postgres_db) == 0, "Invalid document was added to DB"
+        assert result.exit_code != 0, f"Output: {result.output}"
+        assert _dataset_type_count(index) == 0, "Invalid document was added to DB"
 
 
-def test_config_check(clirunner, initialised_postgres_db, local_config):
-    """
-    :type local_config: datacube.config.LocalConfig
-    """
-
+@pytest.mark.parametrize("db_tz", ("UTC",), indirect=True)
+def test_config_check(clirunner, index, cfg_env) -> None:
     # This is not a very thorough check, we just check to see that
     # it prints something vaguely related and does not error-out.
-    result = clirunner(
-        [
-            'system', 'check'
-        ]
-    )
+    result = clirunner(["system", "check"])
 
-    host_regex = re.compile(r'.*Host:\s+{}.*'.format(local_config['db_hostname']),
-                            flags=re.DOTALL)  # Match across newlines
-    user_regex = re.compile(r'.*User:\s+{}.*'.format(local_config['db_username']),
-                            flags=re.DOTALL)
-    assert host_regex.match(result.output)
-    assert user_regex.match(result.output)
+    # Are we displaying the correct database URL for this environment
+    db_url = psql_url_from_config(cfg_env)
+    assert db_url in result.output
+
+    assert str(cfg_env["skip_broken_datasets"]) in result.output
+    assert str(cfg_env["dc_load_limit"]) in result.output
 
 
-def test_list_users_does_not_fail(clirunner, local_config, initialised_postgres_db):
-    """
-    :type local_config: datacube.config.LocalConfig
-    """
+@pytest.mark.parametrize("db_tz", ("UTC",), indirect=True)
+def test_list_users_does_not_fail(clirunner, cfg_env, index) -> None:
     # We don't want to make assumptions about available users during test runs.
     # (They are host-global, not specific to the database)
-    # So we're just checking that it doesn't fail (and the SQL etc is well formed)
-    result = clirunner(
-        [
-            'user', 'list'
-        ]
-    )
-    assert result.exit_code == 0
+    # So we're just checking that it doesn't fail (and the SQL etc. is well-formed)
+    result = clirunner(["user", "list"])
+    assert result.exit_code == 0, f"Output: {result.output}"
 
 
-def test_db_init_noop(clirunner, local_config, ls5_telem_type):
+def test_db_init_noop(clirunner, cfg_env, ls8_eo3_product) -> None:
     # Run on an existing database.
-    result = clirunner(
-        [
-            '-v', 'system', 'init'
-        ]
-    )
-    assert 'Updated.' in result.output
+    result = clirunner(["-v", "system", "init"])
+    assert "Updated." in result.output
     # It should not rebuild indexes by default
-    assert 'Dropping index: dix_{}'.format(ls5_telem_type.name) not in result.output
+    assert f"Dropping index: dix_{ls8_eo3_product.name}" not in result.output
 
-    result = clirunner(['metadata', 'list'])
+    result = clirunner(["metadata", "list"])
     assert "eo3 " in result.output
 
 
-def test_db_init_rebuild(clirunner, local_config, ls5_telem_type):
-    # We set the field creation logging to debug, as we assert its logging output below.
-    _dynamic._LOG.setLevel(logging.DEBUG)
+def test_db_init_rebuild(clirunner, cfg_env, ls8_eo3_product) -> None:
+    if cfg_env._name in ("datacube", "datacube3"):
+        from datacube.drivers.postgres import _dynamic
 
+        # Set field creation logging to debug since we assert on debug output.
+        _dynamic._LOG.setLevel(logging.DEBUG)
     # Run on an existing database.
-    result = clirunner(
-        [
-            '-v', 'system', 'init', '--rebuild'
-        ]
-    )
-    assert 'Updated.' in result.output
-    # It should have recreated views and indexes.
-    assert 'Dropping index: dix_{}'.format(ls5_telem_type.name) in result.output
-    assert 'Creating index: dix_{}'.format(ls5_telem_type.name) in result.output
-    assert 'Dropping view: {schema}.dv_{name}_dataset'.format(
-        schema=SCHEMA_NAME, name=ls5_telem_type.name
-    ) in result.output
-    assert 'Creating view: {schema}.dv_{name}_dataset'.format(
-        schema=SCHEMA_NAME, name=ls5_telem_type.name
-    ) in result.output
+    result = clirunner(["-v", "-E", cfg_env._name, "system", "init", "--rebuild"])
+    assert "Updated." in result.output
+    # These debug log messages are not present in the Postgis driver.
+    if cfg_env._name in ("datacube", "datacube3"):
+        from datacube.drivers.postgres.sql import SCHEMA_NAME
+
+        # It should have recreated views and indexes.
+        assert f"Dropping index: dix_{ls8_eo3_product.name}" in result.output
+        assert f"Creating index: dix_{ls8_eo3_product.name}" in result.output
+        assert (
+            f"Dropping view: {SCHEMA_NAME}.dv_{ls8_eo3_product.name}_dataset"
+            in result.output
+        )
+        assert (
+            f"Creating view: {SCHEMA_NAME}.dv_{ls8_eo3_product.name}_dataset"
+            in result.output
+        )
 
 
-def test_db_init(clirunner, initialised_postgres_db):
-    with initialised_postgres_db.connect() as connection:
-        drop_db(connection._connection)
+def test_db_init(clirunner, index) -> None:
+    from datacube.drivers.common_psql import drop_schema, has_schema
 
-        assert not has_schema(initialised_postgres_db._engine, connection._connection)
+    if index._db.driver_name == "postgis":
+        from datacube.drivers.postgis.sql import SCHEMA_NAME
+    else:
+        from datacube.drivers.postgres.sql import SCHEMA_NAME
+
+    with index._db._connect() as connection:
+        drop_schema(connection._connection, SCHEMA_NAME)
+
+        assert not has_schema(index._db._engine, SCHEMA_NAME)
 
     # Run on an empty database.
-    result = clirunner(['system', 'init'])
-    assert 'Created.' in result.output
+    if index._db.driver_name == "postgis":
+        result = clirunner(["-E", "postgis", "system", "init"])
+    else:
+        result = clirunner(["system", "init"])
 
-    with initialised_postgres_db.connect() as connection:
-        assert has_schema(initialised_postgres_db._engine, connection._connection)
+    assert "Created." in result.output
+
+    with index._db._connect() as connection:
+        assert has_schema(index._db._engine, SCHEMA_NAME)
 
 
-def test_add_no_such_product(clirunner, initialised_postgres_db):
-    result = clirunner(['dataset', 'add', '--dtype', 'no_such_product'], expect_success=False)
-    assert result.exit_code != 0
+@pytest.mark.parametrize("db_tz", ("UTC",), indirect=True)
+def test_add_no_such_product(clirunner, index) -> None:
+    result = clirunner(
+        ["dataset", "add", "--dtype", "no_such_product", "/tmp"], expect_success=False
+    )
+    assert result.exit_code != 0, f"Output: {result.output}"
     assert "DEPRECATED option detected" in result.output
     assert "ERROR Supplied product name" in result.output
 
 
-@pytest.fixture(params=[
-    ('test_"user"_{n}', None),
-    ('test_"user"_{n}', 'Test user description'),
-    # Test that names are escaped
-    ('test_user_"invalid+_chars_{n}', None),
-    ('test_user_invalid_desc_{n}', 'Invalid "\' chars in description')])
-def example_user(clirunner, initialised_postgres_db, request):
+@pytest.fixture(
+    params=[
+        ('test_"user"_{n}', None),
+        ('test_"user"_{n}', "Test user description"),
+        # Test that names are escaped
+        ('test_user_"invalid+_chars_{n}', None),
+        ("test_user_invalid_desc_{n}", "Invalid \"' chars in description"),
+    ]
+)
+def example_user(clirunner, index, request) -> Generator[tuple[str, str | None]]:
     username, description = request.param
 
     username = username.format(n=random.randint(111111, 999999))
 
     # test_roles = (user_name for role_name, user_name, desc in roles if user_name.startswith('test_'))
-    with initialised_postgres_db.connect() as connection:
+    with index._db._connect() as connection:
         users = (user_name for role_name, user_name, desc in connection.list_users())
         if username in users:
             connection.drop_users([username])
@@ -216,43 +254,58 @@ def example_user(clirunner, initialised_postgres_db, request):
 
     yield username, description
 
-    with initialised_postgres_db.connect() as connection:
+    with index._db._connect() as connection:
         users = (user_name for role_name, user_name, desc in connection.list_users())
         if username in users:
             connection.drop_users([username])
 
 
-def test_user_creation(clirunner, example_user):
+@pytest.mark.parametrize("db_tz", ("UTC",), indirect=True)
+def test_user_creation(clirunner, example_user) -> None:
     """
     Add a user, grant them, delete them.
 
     This test requires role creation privileges on the PostgreSQL instance used for testing...
-
-    :type db: datacube.drivers.postgres._connections.PostgresDb
     """
     username, user_description = example_user
 
     # Create them
-    args = ['user', 'create', 'ingest', username]
+    args = ["user", "create", "user", username]
     if user_description:
-        args.extend(['--description', user_description])
+        args.extend(["--description", user_description])
     clirunner(args)
-    assert_user_with_role(clirunner, 'ingest', username)
+    assert_user_with_role(clirunner, "ingest", username)
 
     # Grant them 'manage' permission
-    clirunner(['user', 'grant', 'manage', username])
-    assert_user_with_role(clirunner, 'manage', username)
+    clirunner(["user", "grant", "manage", username])
+    assert_user_with_role(clirunner, "manage", username)
 
     # Delete them
-    clirunner(['user', 'delete', username])
+    clirunner(["user", "delete", username])
     assert_no_user(clirunner, username)
 
 
-def assert_user_with_role(clirunner, role, user_name):
-    result = clirunner(['user', 'list'])
-    assert '{}{}'.format('user: ', user_name) in result.output
+@pytest.mark.parametrize("db_tz", ("UTC",), indirect=True)
+def test_user_creation_passwd_stdin(clirunner, index, tmp_path: Path) -> None:
+    username = "test_user_passwd"
+    password = "some random password"
+
+    args = ["user", "create", "user", username, "--passwd-stdin"]
+    r = clirunner(args, stdin_input=password)
+    assert password not in r.output
+    assert "password taken from stdin" in r.stdout
+    assert_user_with_role(clirunner, "ingest", username)
+
+    # Remove the user just added.
+    clirunner(["user", "delete", username])
+    assert_no_user(clirunner, username)
 
 
-def assert_no_user(clirunner, username):
-    result = clirunner(['user', 'list'])
+def assert_user_with_role(clirunner, role: str, user_name: str) -> None:
+    result = clirunner(["user", "list"])
+    assert "{}{}".format("user: ", user_name) in result.output
+
+
+def assert_no_user(clirunner, username: str) -> None:
+    result = clirunner(["user", "list"])
     assert username not in result.output

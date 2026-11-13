@@ -1,0 +1,138 @@
+# This file is part of the Open Data Cube, see https://opendatacube.org for more information
+#
+# Copyright (c) 2015-2026 ODC Contributors
+# SPDX-License-Identifier: Apache-2.0
+"""
+Module
+"""
+
+from copy import deepcopy
+from typing import Any
+
+import pytest
+
+from datacube.model import Product
+from datacube.utils import InvalidDocException
+
+only_mandatory_fields: dict[str, Any] = {
+    "name": "ls7_nbar",
+    "description": "description",
+    "metadata_type": "eo",
+    "metadata": {"product_type": "test"},
+}
+
+
+@pytest.mark.parametrize(
+    "valid_product_update",
+    [
+        {},
+        {"global_datasets": True},
+        {"global_datasets": False},
+        {"storage": {"crs": "EPSG:3577"}},
+        # With the optional properties
+        {
+            "measurements": [
+                {"name": "band_70", "dtype": "int16", "nodata": -999, "units": "1"}
+            ]
+        },
+    ],
+)
+def test_accepts_valid_docs(valid_product_update) -> None:
+    doc = deepcopy(only_mandatory_fields)
+    doc.update(valid_product_update)
+    # Should have no errors.
+    Product.validate(doc)  # type: ignore[attr-defined]
+
+
+def test_incomplete_product_is_invalid() -> None:
+    # Invalid: An empty doc.
+    with pytest.raises(InvalidDocException):
+        Product.validate({})  # type: ignore[attr-defined]
+
+
+# Changes to the above dict that should render it invalid.
+@pytest.mark.parametrize(
+    "invalid_product_update",
+    [
+        # Mandatory
+        {"name": None},
+        {"global_datasets": "false"},
+        {"global_datasets": 1},
+        {"global_datasets": None},
+        # Should be an object
+        {"storage": "s"},
+        # Should be a string
+        {"description": 123},
+        # Unknown property
+        {"asdf": "asdf"},
+        # Name must have alphanumeric & underscores only.
+        {"name": " whitespace "},
+        {"name": "with-dashes"},
+        # Mappings
+        {"mappings": {}},
+        {"mappings": ""},
+    ],
+)
+def test_rejects_invalid_docs(invalid_product_update) -> None:
+    mapping = deepcopy(only_mandatory_fields)
+    mapping.update(invalid_product_update)
+    with pytest.raises(InvalidDocException):
+        Product.validate(mapping)  # type: ignore[attr-defined]
+
+
+@pytest.mark.parametrize(
+    "valid_product_measurement",
+    [
+        {"name": "1", "dtype": "int16", "units": "1", "nodata": -999},
+        # With the optional properties
+        {
+            "name": "red",
+            "nodata": -999,
+            "units": "1",
+            "dtype": "int16",
+            # TODO: flags/spectral
+        },
+    ],
+)
+def test_accepts_valid_measurements(valid_product_measurement) -> None:
+    mapping = deepcopy(only_mandatory_fields)
+    mapping["measurements"] = [valid_product_measurement]
+    # Should have no errors.
+    Product.validate(mapping)  # type: ignore[attr-defined]
+
+
+# Changes to the above dict that should render it invalid.
+@pytest.mark.parametrize(
+    "invalid_product_measurement",
+    [
+        # no name
+        {"nodata": -999},
+        # nodata must be numeric
+        {"name": "red", "nodata": "-999"},
+        # Limited dtype options
+        {"name": "red", "dtype": "asdf"},
+        {"name": "red", "dtype": "intt13"},
+        {"name": "red", "dtype": 13},
+        # Unknown property
+        {"name": "red", "asdf": "asdf"},
+    ],
+)
+def test_rejects_invalid_measurements(invalid_product_measurement) -> None:
+    mapping = deepcopy(only_mandatory_fields)
+    mapping["measurements"] = {"10": invalid_product_measurement}
+    with pytest.raises(InvalidDocException):
+        Product.validate(mapping)  # type: ignore[attr-defined]
+
+
+def test_nodata_validation() -> None:
+    product = deepcopy(only_mandatory_fields)
+    product["measurements"] = [{"name": "_nan", "dtype": "uint8", "nodata": "NaN"}]
+    with pytest.raises(ValueError):
+        Product.validate_measurements(product)
+
+    product["measurements"] = [{"name": "_nan", "dtype": "uint8", "nodata": -100}]
+    with pytest.raises(ValueError):
+        Product.validate_measurements(product)
+
+    product["measurements"] = [{"name": "_nan", "dtype": "float32", "nodata": "NaN"}]
+    assert Product.validate_measurements(product) is None

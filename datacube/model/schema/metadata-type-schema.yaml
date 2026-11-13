@@ -1,4 +1,4 @@
-"$schema": "http://json-schema.org/draft-04/schema#"
+"$schema": "https://json-schema.org/draft/2020-12/schema"
 description: Schema for metadata types.
 type: object
 
@@ -53,6 +53,7 @@ properties:
             - creation_dt
             - label
             - sources
+            - search_fields
         additionalProperties: false
 required:
     - name
@@ -65,3 +66,5 @@ definitions:
         type: array
         items:
             type: string
+        minItems: 1
+        uniqueItems: true

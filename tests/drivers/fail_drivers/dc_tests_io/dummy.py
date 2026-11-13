@@ -1,12 +1,12 @@
 # This file is part of the Open Data Cube, see https://opendatacube.org for more information
 #
-# Copyright (c) 2015-2020 ODC Contributors
+# Copyright (c) 2015-2026 ODC Contributors
 # SPDX-License-Identifier: Apache-2.0
 
 
-def fail_to_init():
-    raise ValueError('This will always fail')
+def fail_to_init() -> None:
+    raise ValueError("This will always fail")
 
 
-def init_to_none():
+def init_to_none() -> None:
     return None

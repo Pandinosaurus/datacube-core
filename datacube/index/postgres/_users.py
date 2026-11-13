@@ -1,44 +1,59 @@
 # This file is part of the Open Data Cube, see https://opendatacube.org for more information
 #
-# Copyright (c) 2015-2020 ODC Contributors
+# Copyright (c) 2015-2026 ODC Contributors
 # SPDX-License-Identifier: Apache-2.0
-from typing import Iterable, Optional, Tuple
+from __future__ import annotations
+
+from typing import override
+
 from datacube.index.abstract import AbstractUserResource
+from datacube.index.postgres._transaction import IndexResourceAddIn
 
-class UserResource(AbstractUserResource):
-    def __init__(self, db: "datacube.drivers.postgres.PostgresDb") -> None:
-        """
-        :type db: datacube.drivers.postgres._connections.PostgresDb
-        """
+TYPE_CHECKING = False
+if TYPE_CHECKING:
+    from collections.abc import Iterable
+
+    from datacube.drivers.postgres import PostgresDb
+    from datacube.index.postgres.index import Index
+
+
+class UserResource(AbstractUserResource, IndexResourceAddIn):
+    def __init__(self, db: PostgresDb, index: Index) -> None:
         self._db = db
+        self._index = index
 
-    def grant_role(self, role: str, *usernames: str) -> None:
+    @override
+    def grant_role(self, role: str, usernames: str | Iterable[str]) -> bool:
         """
         Grant a role to users
         """
-        with self._db.connect() as connection:
-            connection.grant_role(role, usernames)
+        with self._db_connection() as connection:
+            return connection.grant_role(role, self._to_str_iter(usernames))
 
-    def create_user(self, username: str, password: str,
-                    role: str, description: Optional[str] = None) -> None:
+    @override
+    def create_user(
+        self, username: str, password: str, role: str, description: str | None = None
+    ) -> bool:
         """
         Create a new user.
         """
-        with self._db.connect() as connection:
-            connection.create_user(username, password, role, description=description)
+        with self._db_connection() as connection:
+            return connection.create_user(
+                username, password, role, description=description
+            )
 
-    def delete_user(self, *usernames: str) -> None:
+    @override
+    def delete_user(self, usernames: str | Iterable[str]) -> bool:
         """
         Delete a user
         """
-        with self._db.connect() as connection:
-            connection.drop_users(usernames)
+        with self._db_connection() as connection:
+            return connection.drop_users(self._to_str_iter(usernames))
 
-    def list_users(self) -> Iterable[Tuple[str, str, str]]:
+    @override
+    def list_users(self) -> Iterable[tuple[str, str, str | None]]:
         """
         :return: list of (role, user, description)
-        :rtype: list[(str, str, str)]
         """
-        with self._db.connect() as connection:
-            for role, user, description in connection.list_users():
-                yield role, user, description
+        with self._db_connection() as connection:
+            yield from connection.list_users()

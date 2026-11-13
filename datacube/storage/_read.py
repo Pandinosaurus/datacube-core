@@ -1,91 +1,36 @@
 # This file is part of the Open Data Cube, see https://opendatacube.org for more information
 #
-# Copyright (c) 2015-2020 ODC Contributors
+# Copyright (c) 2015-2026 ODC Contributors
 # SPDX-License-Identifier: Apache-2.0
-""" Dataset -> Raster
-"""
-from affine import Affine
+"""Dataset -> Raster"""
+
+from __future__ import annotations
+
+from typing import cast
+
 import numpy as np
-from typing import Optional, Tuple
+from odc.geo import wh_
+from odc.geo.geobox import GeoBox, zoom_out
+from odc.geo.math import is_affine_st, is_almost_int
+from odc.geo.overlap import compute_reproject_roi
+from odc.geo.roi import roi_is_empty, roi_is_full, roi_pad, roi_shape, w_
+from odc.geo.warp import is_resampling_nn, rio_reproject, warp_affine
 
-from ..utils.math import is_almost_int, valid_mask
+from ..utils.math import valid_mask
 
-from ..utils.geometry import (
-    roi_shape,
-    roi_is_empty,
-    roi_is_full,
-    roi_pad,
-    GeoBox,
-    w_,
-    warp_affine,
-    rio_reproject,
-    compute_reproject_roi)
-
-from ..utils.geometry._warp import is_resampling_nn, Resampling, Nodata
-from ..utils.geometry import gbox as gbx
+TYPE_CHECKING = False
+if TYPE_CHECKING:
+    from odc.geo.types import Nodata
+    from odc.geo.warp import Resampling
 
 
 def rdr_geobox(rdr) -> GeoBox:
-    """ Construct GeoBox from opened dataset reader.
-    """
+    """Construct GeoBox from opened dataset reader."""
     h, w = rdr.shape
-    return GeoBox(w, h, rdr.transform, rdr.crs)
+    return GeoBox(wh_(w, h), rdr.transform, rdr.crs)
 
 
-def can_paste(rr, stol=1e-3, ttol=1e-2):
-    """
-    Take result of compute_reproject_roi and check if can read(possibly with scale) and paste,
-    or do we need to read then reproject.
-
-    :returns: (True, None) if one can just read and paste
-    :returns: (False, Reason) if pasting is not possible, so need to reproject after reading
-    """
-    if not rr.is_st:  # not linear or not Scale + Translation
-        return False, "not ST"
-
-    scale = rr.scale
-    if not is_almost_int(scale, stol):  # non-integer scaling
-        return False, "non-integer scale"
-
-    scale = np.round(scale)
-    A = rr.transform.linear           # src -> dst
-    A = A*Affine.scale(scale, scale)  # src.overview[scale] -> dst
-
-    (sx, _, tx,  # tx, ty are in dst pixel space
-     _, sy, ty,
-     *_) = A
-
-    if any(abs(abs(s) - 1) > stol
-           for s in (sx, sy)):  # not equal scaling across axis?
-        return False, "sx!=sy, probably"
-
-    ny, nx = (n/scale
-              for n in roi_shape(rr.roi_src))
-
-    # src_roi doesn't divide by scale properly:
-    #  example 3x7 scaled down by factor of 2
-    if not all(is_almost_int(n, stol) for n in (nx, ny)):
-        return False, "src_roi doesn't align for scale"
-
-    # TODO: probably need to deal with sub-pixel translation here, if we want
-    # to ignore sub-pixel translation and dst roi is 1 pixel bigger than src it
-    # should still be ok to paste after cropping dst roi by one pixel on the
-    # appropriate side. As it stands sub-pixel translation will be ignored only
-    # in some cases.
-
-    # scaled down shape doesn't match dst shape
-    s_shape = (int(ny), int(nx))
-    if s_shape != roi_shape(rr.roi_dst):
-        return False, "src_roi/scale != dst_roi"
-
-    # final check: sub-pixel translation
-    if not all(is_almost_int(t, ttol) for t in (tx, ty)):
-        return False, "sub-pixel translation"
-
-    return True, None
-
-
-def pick_read_scale(scale: float, rdr=None, tol=1e-3):
+def pick_read_scale(scale: float, rdr=None, tol: float = 1e-3) -> float:
     assert scale > 0
     # First find nearest integer scale
     #    Scale down to nearest integer, unless we can scale up by less than tol
@@ -109,30 +54,33 @@ def pick_read_scale(scale: float, rdr=None, tol=1e-3):
     return scale
 
 
-def read_time_slice(rdr,
-                    dst: np.ndarray,
-                    dst_gbox: GeoBox,
-                    resampling: Resampling,
-                    dst_nodata: Nodata,
-                    extra_dim_index: Optional[int] = None) -> Tuple[slice, slice]:
-    """ From opened reader object read into `dst`
+def read_time_slice(
+    rdr,
+    dst: np.ndarray,
+    dst_geobox: GeoBox,
+    resampling: Resampling,
+    dst_nodata: Nodata,
+    extra_dim_index: int | None = None,
+) -> tuple[slice, slice]:
+    """From opened reader object read into `dst`
 
     :returns: affected destination region
     """
-    assert dst.shape == dst_gbox.shape
-    src_gbox = rdr_geobox(rdr)
-
-    rr = compute_reproject_roi(src_gbox, dst_gbox)
-
-    if roi_is_empty(rr.roi_dst):
-        return rr.roi_dst
+    assert dst.shape == dst_geobox.shape
+    src_geobox = rdr_geobox(rdr)
 
     is_nn = is_resampling_nn(resampling)
+
+    rr = compute_reproject_roi(src_geobox, dst_geobox, ttol=0.9 if is_nn else 0.01)
+
+    if roi_is_empty(rr.roi_dst):
+        return cast("tuple[slice, slice]", rr.roi_dst)
+
     scale = pick_read_scale(rr.scale, rdr)
 
-    paste_ok, _ = can_paste(rr, ttol=0.9 if is_nn else 0.01)
-
-    def norm_read_args(roi, shape, extra_dim_index):
+    def norm_read_args(
+        roi, shape, extra_dim_index
+    ) -> tuple[tuple | None, tuple | None]:
         if roi_is_full(roi, rdr.shape):
             roi = None
 
@@ -146,16 +94,16 @@ def read_time_slice(rdr,
         if extra_dim_index is not None:
             if w is None:
                 w = ()
-            return (extra_dim_index,) + w, shape
-        else:
-            # 2D read window
-            return w, shape
+            return (extra_dim_index, *w), shape
+        # 2D read window
+        return w, shape
 
-    if paste_ok:
+    if rr.paste_ok:
         A = rr.transform.linear
+        assert A is not None  # For type checker
         sx, sy = A.a, A.e
 
-        dst = dst[rr.roi_dst]
+        dst = dst[rr.roi_dst]  # type: ignore[index]
         pix = rdr.read(*norm_read_args(rr.roi_src, dst.shape, extra_dim_index))
 
         if sx < 0:
@@ -168,54 +116,84 @@ def read_time_slice(rdr,
         else:
             np.copyto(dst, pix, where=valid_mask(pix, rdr.nodata))
     else:
-        if rr.is_st:
+        is_st = (
+            False if rr.transform.linear is None else is_affine_st(rr.transform.linear)
+        )
+        if is_st:
             # add padding on src/dst ROIs, it was set to tight bounds
             # TODO: this should probably happen inside compute_reproject_roi
-            rr.roi_dst = roi_pad(rr.roi_dst, 1, dst_gbox.shape)
-            rr.roi_src = roi_pad(rr.roi_src, 1, src_gbox.shape)
+            rr.roi_dst = roi_pad(rr.roi_dst, 1, dst_geobox.shape)  # type: ignore[call-overload]
+            rr.roi_src = roi_pad(rr.roi_src, 1, src_geobox.shape)  # type: ignore[call-overload]
 
-        dst = dst[rr.roi_dst]
-        dst_gbox = dst_gbox[rr.roi_dst]
-        src_gbox = src_gbox[rr.roi_src]
+        dst = dst[rr.roi_dst]  # type: ignore[index]
+        dst_geobox = dst_geobox[rr.roi_dst]
+        src_geobox = src_geobox[rr.roi_src]
         if scale > 1:
-            src_gbox = gbx.zoom_out(src_gbox, scale)
+            src_geobox = zoom_out(src_geobox, scale)
 
-        pix = rdr.read(*norm_read_args(rr.roi_src, src_gbox.shape, extra_dim_index))
+        pix = rdr.read(*norm_read_args(rr.roi_src, src_geobox.shape, extra_dim_index))
 
+        # XSCALE and YSCALE are (currently) undocumented arguments that rasterio passed through to
+        # GDAL.  Not using them results in very inaccurate warping in images with highly
+        # non-square (i.e. long and thin) aspect ratios.
+        #
+        # See https://github.com/OSGeo/gdal/issues/7750 as well as
+        # https://github.com/opendatacube/datacube-core/pull/1450 and
+        # https://github.com/opendatacube/datacube-core/issues/1456
+        #
+        # In theory we might be able to get better results for queries with significantly
+        # different vertical and horizontal scales, but explicitly using XSCALE=1, YSCALE=1
+        # appears to be most appropriate for most requests, and is demonstrably better
+        # than not setting them at all.
+        gdal_scale_params = {
+            "XSCALE": 1,
+            "YSCALE": 1,
+        }
         if rr.transform.linear is not None:
-            A = (~src_gbox.transform)*dst_gbox.transform
-            warp_affine(pix, dst, A, resampling,
-                        src_nodata=rdr.nodata, dst_nodata=dst_nodata)
+            A = (~src_geobox.transform) * dst_geobox.transform
+            warp_affine(
+                pix,
+                dst,
+                A,
+                resampling,
+                src_nodata=rdr.nodata,
+                dst_nodata=dst_nodata,
+                **gdal_scale_params,
+            )
         else:
-            rio_reproject(pix, dst, src_gbox, dst_gbox, resampling,
-                          src_nodata=rdr.nodata, dst_nodata=dst_nodata)
+            rio_reproject(
+                pix,
+                dst,
+                src_geobox,
+                dst_geobox,
+                resampling,
+                src_nodata=rdr.nodata,
+                dst_nodata=dst_nodata,
+                **gdal_scale_params,
+            )
 
-    return rr.roi_dst
+    return cast("tuple[slice, slice]", rr.roi_dst)
 
 
-def read_time_slice_v2(rdr,
-                       dst_gbox: GeoBox,
-                       resampling: Resampling,
-                       dst_nodata: Nodata) -> Tuple[np.ndarray,
-                                                    Tuple[slice, slice]]:
-    """ From opened reader object read into `dst`
+def read_time_slice_v2(
+    rdr, dst_geobox: GeoBox, resampling: Resampling, dst_nodata: Nodata
+) -> tuple[np.ndarray | None, tuple[slice, slice]]:
+    """From opened reader object read into `dst`
 
-    :returns: pixels read and ROI of dst_gbox that was affected
+    :returns: pixels read and ROI of dst_geobox that was affected
     """
     # pylint: disable=too-many-locals
-    src_gbox = rdr_geobox(rdr)
-
-    rr = compute_reproject_roi(src_gbox, dst_gbox)
-
-    if roi_is_empty(rr.roi_dst):
-        return None, rr.roi_dst
+    src_geobox = rdr_geobox(rdr)
 
     is_nn = is_resampling_nn(resampling)
+    rr = compute_reproject_roi(src_geobox, dst_geobox, ttol=0.9 if is_nn else 0.01)
+
+    if roi_is_empty(rr.roi_dst):
+        return None, cast("tuple[slice, slice]", rr.roi_dst)
+
     scale = pick_read_scale(rr.scale, rdr)
 
-    paste_ok, _ = can_paste(rr, ttol=0.9 if is_nn else 0.01)
-
-    def norm_read_args(roi, shape):
+    def norm_read_args(roi, shape) -> tuple[tuple | None, tuple | None]:
         if roi_is_full(roi, rdr.shape):
             roi = None
 
@@ -224,9 +202,10 @@ def read_time_slice_v2(rdr,
 
         return roi, shape
 
-    if paste_ok:
+    if rr.paste_ok:
         read_shape = roi_shape(rr.roi_dst)
         A = rr.transform.linear
+        assert A is not None
         sx, sy = A.a, A.e
 
         pix = rdr.read(*norm_read_args(rr.roi_src, read_shape)).result()
@@ -242,26 +221,37 @@ def read_time_slice_v2(rdr,
 
         dst = pix
     else:
-        if rr.is_st:
+        is_st = (
+            False if rr.transform.linear is None else is_affine_st(rr.transform.linear)
+        )
+        if is_st:
             # add padding on src/dst ROIs, it was set to tight bounds
             # TODO: this should probably happen inside compute_reproject_roi
-            rr.roi_dst = roi_pad(rr.roi_dst, 1, dst_gbox.shape)
-            rr.roi_src = roi_pad(rr.roi_src, 1, src_gbox.shape)
+            rr.roi_dst = roi_pad(rr.roi_dst, 1, dst_geobox.shape)  # type: ignore[call-overload]
+            rr.roi_src = roi_pad(rr.roi_src, 1, src_geobox.shape)  # type: ignore[call-overload]
 
-        dst_gbox = dst_gbox[rr.roi_dst]
-        src_gbox = src_gbox[rr.roi_src]
+        dst_geobox = dst_geobox[rr.roi_dst]
+        src_geobox = src_geobox[rr.roi_src]
         if scale > 1:
-            src_gbox = gbx.zoom_out(src_gbox, scale)
+            src_geobox = zoom_out(src_geobox, scale)
 
-        dst = np.full(dst_gbox.shape, dst_nodata, dtype=rdr.dtype)
-        pix = rdr.read(*norm_read_args(rr.roi_src, src_gbox.shape)).result()
+        dst = np.full(dst_geobox.shape, dst_nodata, dtype=rdr.dtype)
+        pix = rdr.read(*norm_read_args(rr.roi_src, src_geobox.shape)).result()
 
         if rr.transform.linear is not None:
-            A = (~src_gbox.transform)*dst_gbox.transform
-            warp_affine(pix, dst, A, resampling,
-                        src_nodata=rdr.nodata, dst_nodata=dst_nodata)
+            A = (~src_geobox.transform) * dst_geobox.transform
+            warp_affine(
+                pix, dst, A, resampling, src_nodata=rdr.nodata, dst_nodata=dst_nodata
+            )
         else:
-            rio_reproject(pix, dst, src_gbox, dst_gbox, resampling,
-                          src_nodata=rdr.nodata, dst_nodata=dst_nodata)
+            rio_reproject(
+                pix,
+                dst,
+                src_geobox,
+                dst_geobox,
+                resampling,
+                src_nodata=rdr.nodata,
+                dst_nodata=dst_nodata,
+            )
 
-    return dst, rr.roi_dst
+    return dst, cast("tuple[slice, slice]", rr.roi_dst)

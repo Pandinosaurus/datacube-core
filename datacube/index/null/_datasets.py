@@ -1,116 +1,274 @@
 # This file is part of the Open Data Cube, see https://opendatacube.org for more information
 #
-# Copyright (c) 2015-2020 ODC Contributors
+# Copyright (c) 2015-2026 ODC Contributors
 # SPDX-License-Identifier: Apache-2.0
-from typing import Iterable, Union, Optional
-from uuid import UUID
+from __future__ import annotations
+
+from typing import Any, NamedTuple, override
+
+from deprecat import deprecat
+from odc.geo import CRS
 
 from datacube.index.abstract import AbstractDatasetResource
-from datacube.model import Dataset, DatasetType
+from datacube.migration import ODC2DeprecationWarning
+
+TYPE_CHECKING = False
+if TYPE_CHECKING:
+    import datetime
+    from collections.abc import Generator, Iterable, Mapping, Sequence
+
+    from odc.geo import Geometry
+
+    from datacube.model import Dataset, Product, QueryDict, QueryField
+    from datacube.model._base import DSID
+    from datacube.utils.changes import Change, Offset
 
 
 class DatasetResource(AbstractDatasetResource):
-    def __init__(self, product_resource):
-        self.types = product_resource
+    def __init__(self, index) -> None:
+        super().__init__(index)
 
-    def get(self, id_: Union[str, UUID], include_sources=False):
-        return None
+    @override
+    def get_unsafe(
+        self,
+        id_: DSID,
+        include_sources: bool = False,
+        include_deriveds: bool = False,
+        max_depth: int = 0,
+    ):
+        raise KeyError(id_)
 
-    def bulk_get(self, ids):
+    @override
+    def bulk_get(self, ids: Iterable[DSID]) -> list:
         return []
 
-    def get_derived(self, id_):
+    @override
+    def get_derived(self, id_) -> list:
         return []
 
-    def has(self, id_):
+    @override
+    def has(self, id_: DSID) -> bool:
         return False
 
-    def bulk_has(self, ids_):
-        return [False for id in ids_]
+    @override
+    def bulk_has(self, ids_: Iterable[DSID]) -> list:
+        return [False for id_ in ids_]
 
-    def add(self, dataset: Dataset,
-            with_lineage: Optional[bool] = None,
-            **kwargs) -> Dataset:
+    @override
+    def add(
+        self,
+        dataset: Dataset,
+        with_lineage: bool = True,
+        archive_less_mature: int | None = None,
+    ) -> Dataset:
         raise NotImplementedError()
 
-    def search_product_duplicates(self, product: DatasetType, *args):
+    @override
+    def search_product_duplicates(self, product: Product, *args) -> list:
         return []
 
-    def can_update(self, dataset, updates_allowed=None):
+    @override
+    def can_update(
+        self, dataset: Dataset, updates_allowed=None
+    ) -> tuple[bool, list[Change], list[Change]]:
         raise NotImplementedError()
 
-    def update(self, dataset: Dataset, updates_allowed=None):
+    @override
+    def update(
+        self,
+        dataset: Dataset,
+        updates_allowed=None,
+        archive_less_mature: int | None = None,
+    ):
         raise NotImplementedError()
 
-    def archive(self, ids):
+    @override
+    def archive(self, ids: Iterable[DSID]):
         raise NotImplementedError()
 
-    def restore(self, ids):
+    @override
+    def restore(self, ids: Iterable[DSID]):
         raise NotImplementedError()
 
-    def purge(self, ids: Iterable[UUID]):
+    @override
+    def purge(self, ids: Iterable[DSID], allow_delete_active: bool = False) -> Sequence:
         raise NotImplementedError()
 
-    def get_all_dataset_ids(self, archived: bool):
+    @override
+    def get_all_dataset_ids(self, archived: bool) -> list:
         return []
 
-    def get_field_names(self, product_name=None):
+    @deprecat(
+        reason="Multiple locations per dataset are now deprecated.  Please use the 'get_location' method.",
+        version="1.9.0",
+        category=ODC2DeprecationWarning,
+    )
+    @override
+    def get_locations(self, id_) -> list:
         return []
 
-    def get_locations(self, id_):
+    @override
+    def get_location(self, id_: DSID) -> None:
+        return None
+
+    @deprecat(
+        reason="Multiple locations per dataset are now deprecated. "
+        "Archived locations may not be accessible in future releases.",
+        version="1.9.0",
+        category=ODC2DeprecationWarning,
+    )
+    @override
+    def get_archived_locations(self, id_) -> list:
         return []
 
-    def get_archived_locations(self, id_):
+    @deprecat(
+        reason="Multiple locations per dataset are now deprecated. "
+        "Archived locations may not be accessible in future releases.",
+        version="1.9.0",
+        category=ODC2DeprecationWarning,
+    )
+    @override
+    def get_archived_location_times(self, id_) -> list:
         return []
 
-    def get_archived_location_times(self, id_):
-        return []
-
-    def add_location(self, id_, uri):
+    @deprecat(
+        reason="Multiple locations per dataset are now deprecated. "
+        "Dataset location can be set or updated with the update() method.",
+        version="1.9.0",
+        category=ODC2DeprecationWarning,
+    )
+    @override
+    def add_location(self, id_, uri) -> bool:
         raise NotImplementedError()
 
-    def get_datasets_for_location(self, uri, mode=None):
+    @override
+    def get_datasets_for_location(self, uri: str, mode: str | None = None) -> list:
         return []
 
-    def remove_location(self, id_, uri):
+    @deprecat(
+        reason="Multiple locations per dataset are now deprecated. "
+        "Dataset location can be set or updated with the update() method.",
+        version="1.9.0",
+        category=ODC2DeprecationWarning,
+    )
+    @override
+    def remove_location(self, id_, uri) -> bool:
         raise NotImplementedError()
 
-    def archive_location(self, id_, uri):
+    @deprecat(
+        reason="Multiple locations per dataset are now deprecated. "
+        "Archived locations may not be accessible in future releases. "
+        "Dataset location can be set or updated with the update() method.",
+        version="1.9.0",
+        category=ODC2DeprecationWarning,
+    )
+    @override
+    def archive_location(self, id_, uri) -> bool:
         raise NotImplementedError()
 
-    def restore_location(self, id_, uri):
+    @deprecat(
+        reason="Multiple locations per dataset are now deprecated. "
+        "Archived locations may not be restorable in future releases. "
+        "Dataset location can be set or updated with the update() method.",
+        version="1.9.0",
+        category=ODC2DeprecationWarning,
+    )
+    @override
+    def restore_location(self, id_, uri) -> bool:
         raise NotImplementedError()
 
-    def search_by_metadata(self, metadata):
+    @override
+    def search_by_metadata(self, metadata, archived: bool | None = False) -> list:
         return []
 
-    def search(self, limit=None, **query):
+    @deprecat(
+        deprecated_args={
+            "source_filter": {
+                "reason": "Filtering by source metadata is deprecated and will be removed in future.",
+                "version": "1.9.0",
+                "category": ODC2DeprecationWarning,
+            }
+        }
+    )
+    @override
+    def search(
+        self,
+        limit: int | None = None,
+        source_filter: QueryDict | None = None,
+        archived: bool | None = False,
+        order_by: Iterable[Any] | None = None,
+        **query: QueryField,
+    ) -> Iterable[Dataset]:
         return []
 
-    def search_by_product(self, **query):
+    @override
+    def search_by_product(
+        self, archived: bool | None = False, **query: QueryField
+    ) -> Iterable[tuple[Product, Iterable[Dataset]]]:
         return []
 
-    def search_returning(self, field_names, limit=None, **query):
-        return []
+    @override
+    def search_returning(
+        self,
+        field_names: Iterable[str] | None = None,
+        custom_offsets: Mapping[str, Offset] | None = None,
+        limit: int | None = None,
+        archived: bool | None = False,
+        order_by: Iterable[Any] | None = None,
+        **query: QueryField,
+    ) -> Generator[NamedTuple]:
+        yield from []
 
-    def count(self, **query):
+    @override
+    def count(self, archived: bool | None = False, **query) -> int:
         return 0
 
-    def count_by_product(self, **query):
+    @override
+    def count_by_product(self, archived: bool | None = False, **query) -> list:
         return []
 
-    def count_by_product_through_time(self, period, **query):
+    @override
+    def count_by_product_through_time(
+        self, period: str, archived: bool | None = False, **query
+    ) -> list:
         return []
 
-    def count_product_through_time(self, period, **query):
+    @override
+    def count_product_through_time(
+        self, period: str, archived: bool | None = False, **query
+    ) -> list:
         return []
 
-    def search_summaries(self, **query):
+    @deprecat(
+        reason="This method is deprecated and will be removed in 2.0.  "
+        "Consider migrating to search_returning()",
+        version="1.9.0",
+        category=ODC2DeprecationWarning,
+    )
+    @override
+    def search_summaries(self, **query) -> list:
         return []
 
-    def get_product_time_bounds(self, product: str):
-        raise NotImplementedError()
+    @override
+    def temporal_extent(
+        self, ids: Iterable[DSID]
+    ) -> tuple[datetime.datetime, datetime.datetime]:
+        raise KeyError(str(ids))
 
     # pylint: disable=redefined-outer-name
-    def search_returning_datasets_light(self, field_names: tuple, custom_offsets=None, limit=None, **query):
+    @override
+    def search_returning_datasets_light(
+        self,
+        field_names: tuple,
+        custom_offsets=None,
+        limit: int | None = None,
+        archived: bool | None = False,
+        **query,
+    ) -> list:
         return []
+
+    @override
+    def spatial_extent(
+        self, ids: Iterable[DSID], crs: CRS = CRS("EPSG:4326")
+    ) -> Geometry | None:
+        return None

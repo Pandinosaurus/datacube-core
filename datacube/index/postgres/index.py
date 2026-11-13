@@ -1,18 +1,38 @@
 # This file is part of the Open Data Cube, see https://opendatacube.org for more information
 #
-# Copyright (c) 2015-2020 ODC Contributors
+# Copyright (c) 2015-2026 ODC Contributors
 # SPDX-License-Identifier: Apache-2.0
-import logging
+from __future__ import annotations
 
+import logging
+from contextlib import contextmanager
+from typing import Any, override
+
+from datacube.cfg.opt import config_options_for_psql_driver
+from datacube.drivers.common_psql import catch_generator_timeout
 from datacube.drivers.postgres import PostgresDb
-from datacube.index.postgres._datasets import DatasetResource  # type: ignore
+from datacube.index.abstract import (
+    AbstractIndex,
+    AbstractIndexDriver,
+    default_metadata_type_docs,
+)
+from datacube.index.postgres._datasets import DatasetResource
+from datacube.index.postgres._lineage import LineageResource
 from datacube.index.postgres._metadata_types import MetadataTypeResource
 from datacube.index.postgres._products import ProductResource
+from datacube.index.postgres._transaction import PostgresTransaction
 from datacube.index.postgres._users import UserResource
-from datacube.index.abstract import AbstractIndex, AbstractIndexDriver, default_metadata_type_docs
-from datacube.model import MetadataType
 
-_LOG = logging.getLogger(__name__)
+TYPE_CHECKING = False
+if TYPE_CHECKING:
+    from collections.abc import Generator, Iterable, Mapping
+
+    from datacube.cfg.api import ODCEnvironment
+    from datacube.cfg.opt import ODCOptionHandler
+    from datacube.drivers.postgres import PostgresDbAPI
+    from datacube.index.abstract import AbstractTransaction
+
+_LOG: logging.Logger = logging.getLogger(__name__)
 
 
 class Index(AbstractIndex):
@@ -27,95 +47,190 @@ class Index(AbstractIndex):
     other connections are active. Or else use a separate instance of this class in each process.
 
     :ivar datacube.index._datasets.DatasetResource datasets: store and retrieve :class:`datacube.model.Dataset`
-    :ivar datacube.index._products.ProductResource products: store and retrieve :class:`datacube.model.DatasetType`\
+    :ivar datacube.index._products.ProductResource products: store and retrieve :class:`datacube.model.Product`\
     (should really be called Product)
     :ivar datacube.index._metadata_types.MetadataTypeResource metadata_types: store and retrieve \
     :class:`datacube.model.MetadataType`
     :ivar UserResource users: user management
-
-    :type users: datacube.index._users.UserResource
-    :type datasets: datacube.index._datasets.DatasetResource
-    :type products: datacube.index._products.ProductResource
-    :type metadata_types: datacube.index._metadata_types.MetadataTypeResource
     """
 
-    def __init__(self, db: PostgresDb) -> None:
-        self._db = db
+    #   Metadata type support flags
+    supports_legacy = True
+    supports_eo3 = True
+    supports_nongeo = True
 
-        self._users = UserResource(db)
-        self._metadata_types = MetadataTypeResource(db)
-        self._products = ProductResource(db, self.metadata_types)
-        self._datasets = DatasetResource(db, self.products)
+    #   Database/storage feature support flags
+    supports_write = True
+    supports_persistence = True
+    supports_transactions = True
+
+    #   User management support flags
+    supports_users = True
+
+    #   Lineage support flags
+    supports_lineage = True
+
+    def __init__(self, db: PostgresDb, env: ODCEnvironment) -> None:
+        self._db = db
+        self._env = env
+        self._users = UserResource(db, self)
+        self._metadata_types = MetadataTypeResource(db, self)
+        self._products = ProductResource(db, self)
+        self._lineage = LineageResource(db, self)
+        self._datasets = DatasetResource(db, self)
 
     @property
+    @override
+    def name(self) -> str:
+        return "pg_index"
+
+    @property
+    @override
+    def environment(self) -> ODCEnvironment:
+        return self._env
+
+    @property
+    @override
     def users(self) -> UserResource:
         return self._users
 
     @property
+    @override
     def metadata_types(self) -> MetadataTypeResource:
         return self._metadata_types
 
     @property
+    @override
     def products(self) -> ProductResource:
         return self._products
 
     @property
+    @override
+    def lineage(self) -> LineageResource:
+        return self._lineage
+
+    @property
+    @override
     def datasets(self) -> DatasetResource:
         return self._datasets
 
     @property
+    @override
     def url(self) -> str:
-        return self._db.url
+        return str(self._db.url)
 
     @classmethod
-    def from_config(cls, config, application_name=None, validate_connection=True):
-        db = PostgresDb.from_config(config, application_name=application_name,
-                                    validate_connection=validate_connection)
-        return cls(db)
+    @override
+    def from_config(
+        cls,
+        cfg_env: ODCEnvironment,
+        application_name: str | None = None,
+        validate_connection: bool = True,
+    ) -> Index:
+        db = PostgresDb.from_config(
+            cfg_env,
+            application_name=application_name,
+            validate_connection=validate_connection,
+        )
+        return cls(db, cfg_env)
 
-    @classmethod
-    def get_dataset_fields(cls, doc):
-        return PostgresDb.get_dataset_fields(doc)
+    @override
+    def get_dataset_fields(self, doc: Mapping[str, Any]) -> Mapping[str, Any]:
+        return self._db.get_dataset_fields(doc)
 
-    def init_db(self, with_default_types=True, with_permissions=True):
+    @override
+    def init_db(
+        self, with_default_types: bool = True, with_permissions: bool = True
+    ) -> bool:
         is_new = self._db.init(with_permissions=with_permissions)
 
         if is_new and with_default_types:
-            _LOG.info('Adding default metadata types.')
+            _LOG.info("Adding default metadata types.")
             for doc in default_metadata_type_docs():
-                self.metadata_types.add(self.metadata_types.from_doc(doc), allow_table_lock=True)
+                self.metadata_types.add(
+                    self.metadata_types.from_doc(doc), allow_table_lock=True
+                )
 
         return is_new
 
-    def close(self):
+    @override
+    def close(self) -> None:
         """
         Close any idle connections database connections.
 
         This is good practice if you are keeping the Index instance in scope
-        but wont be using it for a while.
+        but won't be using it for a while.
 
         (Connections are normally closed automatically when this object is deleted: ie. no references exist)
         """
         self._db.close()
 
-    def __repr__(self):
-        return "Index<db={!r}>".format(self._db)
+    @property
+    @override
+    def index_id(self) -> str:
+        return f"legacy_{self.url}"
 
+    @override
+    def transaction(self) -> AbstractTransaction:
+        return PostgresTransaction(self._db, self.index_id)
 
-class DefaultIndexDriver(AbstractIndexDriver):
-    @staticmethod
-    def connect_to_index(config, application_name=None, validate_connection=True):
-        return Index.from_config(config, application_name, validate_connection)
+    @override
+    def __repr__(self) -> str:
+        return f"Index<db={self._db!r}>"
 
-    @staticmethod
-    def metadata_type_from_doc(definition: dict) -> MetadataType:
+    @contextmanager
+    @catch_generator_timeout
+    def _active_connection(self, transaction: bool = False) -> Generator[PostgresDbAPI]:
         """
-        :param definition:
+        Context manager representing a database connection.
+
+        If there is an active transaction for this index in the current thread, the connection object from that
+        transaction is returned, with the active transaction remaining in control of commit and rollback.
+
+        If there is no active transaction and the transaction argument is True, a new transactionised connection
+        is returned, with this context manager handling commit and rollback.
+
+        If there is no active transaction and the transaction argument is False (the default), a new connection
+        is returned with autocommit semantics.
+
+        Note that autocommit behaviour is NOT available if there is an active transaction for the index
+        and the active thread.
+
+        :param transaction: Use a transaction if one is not already active for the thread.
+        :return: A PostgresDbAPI object, with the specified transaction semantics.
         """
-        MetadataType.validate(definition)  # type: ignore
-        return MetadataType(definition,
-                            dataset_search_fields=Index.get_dataset_fields(definition))
+        trans = self.thread_transaction()
+        if trans is not None:
+            # Use active transaction
+            yield trans._connection
+        elif transaction:
+            with self._db._connect() as conn:
+                conn.begin()
+                try:
+                    yield conn
+                    conn.commit()
+                except Exception:  # pylint: disable=broad-except
+                    conn.rollback()
+                    raise
+        else:
+            # Autocommit behaviour:
+            with self._db._connect() as conn:
+                yield conn
 
 
-def index_driver_init():
-    return DefaultIndexDriver()
+class PostgresIndexDriver(AbstractIndexDriver):
+    aliases = ["legacy", "default"]
+
+    @classmethod
+    @override
+    def index_class(cls) -> type[AbstractIndex]:
+        return Index
+
+    @staticmethod
+    @override
+    def get_config_option_handlers(env: ODCEnvironment) -> Iterable[ODCOptionHandler]:
+        return config_options_for_psql_driver(env)
+
+
+def index_driver_init() -> PostgresIndexDriver:
+    return PostgresIndexDriver()

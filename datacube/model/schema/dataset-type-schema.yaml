@@ -1,4 +1,4 @@
-"$schema": "http://json-schema.org/draft-04/schema#"
+"$schema": "https://json-schema.org/draft/2020-12/schema"
 description: Schema for dataset types.
 type: object
 properties:
@@ -21,7 +21,7 @@ properties:
         type: object
     extra_dimensions:
         type: array
-        description: Describes extra dimenions between (t) and (y, x)
+        description: Describes extra dimensions between (t) and (y, x)
         items:
             "$ref": "#/definitions/extra_dimensions"
     storage:
@@ -37,6 +37,12 @@ properties:
             "$ref": "#/definitions/measurement"
     managed:
         type: boolean
+    global_datasets:
+        type: boolean
+        default: false
+        description: >-
+            Assert that every dataset in this product covers the globe.
+            The PostGIS index may skip spatial filtering for this product.
 
 required:
     - name
@@ -67,6 +73,8 @@ definitions:
                     type: number
             dtype:
                 "$ref": "#/definitions/dtype"
+            units:
+                type: string
         required:
         - name
         - values
@@ -97,7 +105,7 @@ definitions:
             nodata:
               oneOf:
                 - type: number
-                - enum: [NaN, Inf, -Inf]
+                - enum: [nan, NAN, NaN, Inf, -Inf]
             scale_factor:
               description: 'Defines mapping to some "real" space like so: real_value = pixel_value*scale_factor + add_offset'
               type: number
@@ -138,6 +146,12 @@ definitions:
                         type: string
             extra_dim:
                 type: string
+            dims:
+                type: array
+                description: Captures information about extra dimensions, e.g. `[y, x, wavelength]`
+                items:
+                    type: string
+
         required:
           - name
           - dtype

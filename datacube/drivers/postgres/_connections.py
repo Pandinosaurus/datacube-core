@@ -1,6 +1,6 @@
 # This file is part of the Open Data Cube, see https://opendatacube.org for more information
 #
-# Copyright (c) 2015-2020 ODC Contributors
+# Copyright (c) 2015-2026 ODC Contributors
 # SPDX-License-Identifier: Apache-2.0
 
 # We often have one-arg-per column, so these checks aren't so useful.
@@ -12,41 +12,42 @@
 """
 Postgres connection and setup
 """
-import json
+
+from __future__ import annotations
+
 import logging
-import os
 import re
 from contextlib import contextmanager
-from typing import Callable, Optional, Union
+from typing import Any, override
 
-from sqlalchemy import event, create_engine, text
-from sqlalchemy.engine import Engine
-from sqlalchemy.engine.url import URL as EngineUrl
+from sqlalchemy import create_engine, event
 
 import datacube
+from datacube.drivers.common_psql import catch_timeout
 from datacube.index.exceptions import IndexSetupError
-from datacube.utils import jsonify_document
+from datacube.utils import json, jsonify_document
 
-from . import _api
-from . import _core
+from ...cfg import psql_url_from_config
+from . import _api, _core
 
-_LIB_ID = 'agdc-' + str(datacube.__version__)
+TYPE_CHECKING = False
+if TYPE_CHECKING:
+    from collections.abc import Callable, Generator, Mapping
 
-_LOG = logging.getLogger(__name__)
+    from sqlalchemy import Connection
+    from sqlalchemy.engine import Engine
+    from sqlalchemy.engine.url import URL as EngineUrl  # noqa: N811
 
-try:
-    import pwd
+    from datacube.drivers.postgres._fields import PgField
 
-    DEFAULT_DB_USER = pwd.getpwuid(os.geteuid()).pw_name  # type: Optional[str]
-except (ImportError, KeyError):
-    # No default on Windows and some other systems
-    DEFAULT_DB_USER = None
-DEFAULT_DB_PORT = 5432
-DEFAULT_IAM_AUTH = False
-DEFAULT_IAM_TIMEOUT = 600
+    from ...cfg import ODCEnvironment
+
+_LIB_ID: str = "odc-" + str(datacube.__version__)
+
+_LOG: logging.Logger = logging.getLogger(__name__)
 
 
-class PostgresDb(object):
+class PostgresDb:
     """
     A thin database access api.
 
@@ -61,81 +62,109 @@ class PostgresDb(object):
     or else use a separate instance of this class in each process.
     """
 
-    def __init__(self, engine):
+    driver_name = "postgres"  # Mostly to support parametrised tests
+
+    def __init__(self, engine) -> None:
         # We don't recommend using this constructor directly as it may change.
         # Use static methods PostgresDb.create() or PostgresDb.from_config()
         self._engine = engine
 
     @classmethod
-    def from_config(cls, config, application_name=None, validate_connection=True):
+    def from_config(
+        cls,
+        config_env: ODCEnvironment,
+        application_name: str | None = None,
+        validate_connection: bool = True,
+    ) -> PostgresDb:
         app_name = cls._expand_app_name(application_name)
 
         return PostgresDb.create(
-            config['db_hostname'],
-            config['db_database'],
-            config.get('db_username', DEFAULT_DB_USER),
-            config.get('db_password', None),
-            config.get('db_port', DEFAULT_DB_PORT),
-            application_name=app_name,
-            validate=validate_connection,
-            iam_rds_auth=bool(config.get("db_iam_authentication", DEFAULT_IAM_AUTH)),
-            iam_rds_timeout=int(config.get("db_iam_timeout", DEFAULT_IAM_TIMEOUT)),
-            pool_timeout=int(config.get('db_connection_timeout', 60)),
-            # pass config?
+            config_env, application_name=app_name, validate=validate_connection
         )
 
     @classmethod
-    def create(cls, hostname, database, username=None, password=None, port=None,
-               application_name=None, validate=True,
-               iam_rds_auth=False, iam_rds_timeout=600,
-               # pass config?
-               pool_timeout=60):
-        mk_url = getattr(EngineUrl, 'create', EngineUrl)
+    def create(
+        cls,
+        config_env: ODCEnvironment,
+        application_name: str | None = None,
+        validate: bool = True,
+    ) -> PostgresDb:
+        url = psql_url_from_config(config_env)
         engine = cls._create_engine(
-            mk_url(
-                'postgresql',
-                host=hostname, database=database, port=port,
-                username=username, password=password,
-            ),
-            application_name=application_name,
-            iam_rds_auth=iam_rds_auth,
-            iam_rds_timeout=iam_rds_timeout,
-            pool_timeout=pool_timeout)
+            url,
+            application_name,
+            config_env.db_iam_authentication,
+            config_env.db_iam_timeout if config_env.db_iam_authentication else 600,
+            config_env.db_connection_timeout,
+            config_env.db_query_timeout,
+        )
         if validate:
             if not _core.database_exists(engine):
-                raise IndexSetupError('\n\nNo DB schema exists. Have you run init?\n\t{init_command}'.format(
-                    init_command='datacube system init'
-                ))
+                raise IndexSetupError(
+                    "\n\nNo DB schema exists. Have you run init?\n\t{init_command}".format(
+                        init_command="datacube system init"
+                    )
+                )
 
             if not _core.schema_is_latest(engine):
                 raise IndexSetupError(
-                    '\n\nDB schema is out of date. '
-                    'An administrator must run init:\n\t{init_command}'.format(
-                        init_command='datacube -v system init'
-                    ))
+                    "\n\nDB schema is out of date. "
+                    "An administrator must run init:\n\t{init_command}".format(
+                        init_command="datacube -v system init"
+                    )
+                )
         return PostgresDb(engine)
 
     @staticmethod
-    def _create_engine(url, application_name=None, iam_rds_auth=False, iam_rds_timeout=600, pool_timeout=60):
-        engine = create_engine(
-            url,
-            echo=False,
-            echo_pool=False,
-
-            # 'AUTOCOMMIT' here means READ-COMMITTED isolation level with autocommit on.
-            # When a transaction is needed we will do an explicit begin/commit.
-            isolation_level='AUTOCOMMIT',
-            json_serializer=_to_json,
-            # If a connection is idle for this many seconds, SQLAlchemy will renew it rather
-            # than assuming it's still open. Allows servers to close idle connections without clients
-            # getting errors.
-            pool_recycle=pool_timeout,
-            connect_args={'application_name': application_name}
-        )
+    def _create_engine(
+        url: str | EngineUrl,
+        application_name: str | None = None,
+        iam_rds_auth: bool = False,
+        iam_rds_timeout: float | int = 600,
+        pool_timeout: int = 60,
+        query_timeout: int = 0,
+    ) -> Engine:
+        connect_args: dict[str, Any] = {"application_name": application_name}
+        if query_timeout:
+            # Query timeout, in milliseconds.
+            connect_args["options"] = f"-c statement_timeout={query_timeout}"
+        if str(url).startswith("postgresql+psycopg://"):
+            try:
+                from psycopg import ClientCursor
+            except ImportError:
+                raise IndexSetupError(
+                    "psycopg is required to work with the database. "
+                    "Please install the psycopg package manually."
+                ) from None
+            connect_args["cursor_factory"] = ClientCursor
+        try:
+            engine = create_engine(
+                url,
+                echo=False,
+                echo_pool=False,
+                # 'AUTOCOMMIT' here means READ-COMMITTED isolation level with autocommit on.
+                # When a transaction is needed we will do an explicit begin/commit.
+                isolation_level="AUTOCOMMIT",
+                json_serializer=_to_json,
+                # If a connection is idle for this many seconds, SQLAlchemy will renew it rather
+                # than assuming it's still open. Allows servers to close idle connections without clients
+                # getting errors.
+                pool_recycle=pool_timeout,
+                connect_args=connect_args,
+            )
+        except ModuleNotFoundError:
+            raise IndexSetupError(
+                "psycopg2 is required to work with the database. "
+                "Please install the [postgres] or [test] dependencies, "
+                "or manually install psycopg2 or psycopg2-binary."
+            ) from None
 
         if iam_rds_auth:
             from datacube.utils.aws import obtain_new_iam_auth_token
-            handle_dynamic_token_authentication(engine, obtain_new_iam_auth_token, timeout=iam_rds_timeout, url=url)
+
+            handle_dynamic_token_authentication(
+                engine, obtain_new_iam_auth_token, timeout=iam_rds_timeout, url=url
+            )
 
         return engine
 
@@ -143,19 +172,12 @@ class PostgresDb(object):
     def url(self) -> EngineUrl:
         return self._engine.url
 
-    @staticmethod
-    def get_db_username(config):
-        try:
-            return config['db_username']
-        except KeyError:
-            return DEFAULT_DB_USER
-
-    def close(self):
+    def close(self) -> None:
         """
         Close any idle connections in the pool.
 
         This is good practice if you are keeping this object in scope
-        but wont be using it for a while.
+        but won't be using it for a while.
 
         Connections should not be shared between processes, so this should be called
         before forking if the same instance will be used.
@@ -166,16 +188,16 @@ class PostgresDb(object):
         self._engine.dispose()
 
     @classmethod
-    def _expand_app_name(cls, application_name):
+    def _expand_app_name(cls, application_name: str | None) -> str:
         """
-        >>> PostgresDb._expand_app_name(None) #doctest: +ELLIPSIS
-        'agdc-...'
-        >>> PostgresDb._expand_app_name('') #doctest: +ELLIPSIS
-        'agdc-...'
-        >>> PostgresDb._expand_app_name('cli') #doctest: +ELLIPSIS
-        'cli agdc-...'
-        >>> PostgresDb._expand_app_name('a b.c/d')
-        'a-b-c-d agdc-...'
+        >>> PostgresDb._expand_app_name(None)  # doctest: +ELLIPSIS
+        'odc-...'
+        >>> PostgresDb._expand_app_name("")  # doctest: +ELLIPSIS
+        'odc-...'
+        >>> PostgresDb._expand_app_name("cli")  # doctest: +ELLIPSIS
+        'cli odc-...'
+        >>> PostgresDb._expand_app_name("a b.c/d")
+        'a-b-c-d odc-...'
         >>> PostgresDb._expand_app_name(5)
         Traceback (most recent call last):
         ...
@@ -184,15 +206,19 @@ class PostgresDb(object):
         full_name = _LIB_ID
         if application_name:
             if not isinstance(application_name, str):
-                raise TypeError('Application name must be a string')
+                raise TypeError("Application name must be a string")
 
-            full_name = re.sub('[^0-9a-zA-Z]+', '-', application_name) + ' ' + full_name
+            full_name = re.sub("[^0-9a-zA-Z]+", "-", application_name) + " " + full_name
 
         if len(full_name) > 64:
-            _LOG.warning('Application name is too long: Truncating to %s chars', (64 - len(_LIB_ID) - 1))
+            _LOG.warning(
+                "Application name is too long: Truncating to %s chars",
+                (64 - len(_LIB_ID) - 1),
+            )
         return full_name[-64:]
 
-    def init(self, with_permissions=True):
+    @catch_timeout
+    def init(self, with_permissions: bool = True) -> bool:
         """
         Init a new database (if not already set up).
 
@@ -200,12 +226,12 @@ class PostgresDb(object):
         """
         is_new = _core.ensure_db(self._engine, with_permissions=with_permissions)
         if not is_new:
-            _core.update_schema(self._engine)
+            _core.update_schema(self._engine, with_permissions=with_permissions)
 
         return is_new
 
     @contextmanager
-    def connect(self):
+    def _connect(self) -> Generator[_api.PostgresDbAPI]:
         """
         Borrow a connection from the pool.
 
@@ -216,64 +242,45 @@ class PostgresDb(object):
         to the pool beforehand.
 
         The connection can raise errors if not following this advice ("server closed the connection unexpectedly"),
-        as some servers will aggressively close idle connections (eg. DEA's NCI servers). It also prevents the
+        as some servers will aggressively close idle connections (e.g. DEA's NCI servers). It also prevents the
         connection from being reused while borrowed.
+
+        Low level context manager, use <index_resource>._db_connection instead
         """
-        with self._engine.connect() as connection:
-            yield _api.PostgresDbAPI(connection)
-            connection.close()
-
-    @contextmanager
-    def begin(self):
-        """
-        Start a transaction.
-
-        Returns an instance that will maintain a single connection in a transaction.
-
-        Call commit() or rollback() to complete the transaction or use a context manager:
-
-            with db.begin() as trans:
-                trans.insert_dataset(...)
-
-        (Don't share an instance between threads)
-
-        :rtype: PostgresDBAPI
-        """
-        with self._engine.connect() as connection:
-            connection.execute(text('BEGIN'))
+        with self._engine.connect().execution_options(
+            isolation_level="AUTOCOMMIT", preserve_rowcount=True
+        ) as connection:
             try:
                 yield _api.PostgresDbAPI(connection)
-                connection.execute(text('COMMIT'))
-            except Exception:  # pylint: disable=broad-except
-                connection.execute(text('ROLLBACK'))
-                raise
             finally:
                 connection.close()
 
-    def give_me_a_connection(self):
+    def give_me_a_connection(self) -> Connection:
         return self._engine.connect()
 
     @classmethod
-    def get_dataset_fields(cls, metadata_type_definition):
+    def get_dataset_fields(
+        cls, metadata_type_definition: Mapping[str, Any]
+    ) -> Mapping[str, PgField]:
         return _api.get_dataset_fields(metadata_type_definition)
 
-    def __repr__(self):
-        return "PostgresDb<engine={!r}>".format(self._engine)
+    @override
+    def __repr__(self) -> str:
+        return f"PostgresDb<engine={self._engine!r}>"
 
 
-def handle_dynamic_token_authentication(engine: Engine,
-                                        new_token: Callable[..., str],
-                                        timeout: Union[float, int] = 600,
-                                        **kwargs) -> None:
-    last_token = [None]
+def handle_dynamic_token_authentication(
+    engine: Engine, new_token: Callable[..., str], timeout: float | int = 600, **kwargs
+) -> None:
+    last_token: list[str | None] = [None]
     last_token_time = [0.0]
 
     @event.listens_for(engine, "do_connect")
-    def override_new_connection(dialect, conn_rec, cargs, cparams):
+    def override_new_connection(dialect, conn_rec, cargs, cparams) -> None:
         # Handle IAM authentication
         # Importing here because the function `clock_gettime` is not available on Windows
         # which shouldn't be a problem, because boto3 auth is mostly used on AWS.
-        from time import clock_gettime, CLOCK_REALTIME
+        from time import CLOCK_REALTIME, clock_gettime
 
         now = clock_gettime(CLOCK_REALTIME)
         if now - last_token_time[0] > timeout:
@@ -282,12 +289,12 @@ def handle_dynamic_token_authentication(engine: Engine,
         cparams["password"] = last_token[0]
 
 
-def _to_json(o):
+def _to_json(o) -> str:
     # Postgres <=9.5 doesn't support NaN and Infinity
     fixedup = jsonify_document(o)
     return json.dumps(fixedup, default=_json_fallback)
 
 
-def _json_fallback(obj):
+def _json_fallback(obj: Any) -> None:
     """Fallback json serialiser."""
-    raise TypeError("Type not serializable: {}".format(type(obj)))
+    raise TypeError(f"Type not serializable: {type(obj)}")

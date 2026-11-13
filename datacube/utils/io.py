@@ -1,22 +1,28 @@
 # This file is part of the Open Data Cube, see https://opendatacube.org for more information
 #
-# Copyright (c) 2015-2020 ODC Contributors
+# Copyright (c) 2015-2026 ODC Contributors
 # SPDX-License-Identifier: Apache-2.0
+from __future__ import annotations
+
 import os
 from pathlib import Path
-from typing import Union, Optional
+from sys import stdin
+
+TYPE_CHECKING = False
+if TYPE_CHECKING:
+    from collections.abc import Generator
 
 
-def _norm_path(path: Union[str, Path], in_home_dir: bool = False) -> Path:
+def _norm_path(path: str | Path, in_home_dir: bool = False) -> Path:
     if isinstance(path, str):
         path = Path(path)
     if in_home_dir:
-        path = Path.home()/path
+        path = Path.home() / path
     return path
 
 
-def check_write_path(fname: Union[Path, str], overwrite: bool) -> Path:
-    """ Check is output file exists and either remove it first or raise IOError.
+def check_write_path(fname: Path | str, overwrite: bool) -> Path:
+    """Check is output file exists and either remove it first or raise IOError.
 
     :param fname: string or Path object
     :param overwrite: Whether to remove file when it exists
@@ -35,14 +41,13 @@ def check_write_path(fname: Union[Path, str], overwrite: bool) -> Path:
         if overwrite:
             fname.unlink()
         else:
-            raise IOError("File exists")
+            raise OSError("File exists")
     return fname
 
 
-def write_user_secret_file(text: Union[str, bytes],
-                           fname: Union[str, Path],
-                           in_home_dir: bool = False,
-                           mode: str = 'w'):
+def write_user_secret_file(
+    text: str | bytes, fname: str | Path, in_home_dir: bool = False, mode: str = "w"
+) -> None:
     """Write file only readable/writeable by the user"""
 
     fname = _norm_path(fname, in_home_dir)
@@ -53,9 +58,22 @@ def write_user_secret_file(text: Union[str, bytes],
         handle.close()
 
 
-def slurp(fname: Union[str, Path],
-          in_home_dir: bool = False,
-          mode: str = 'r') -> Optional[Union[bytes, str]]:
+def read_stdin_lines(skip_empty: bool = False) -> Generator[str]:
+    """Read lines from stdin.
+
+    Returns iterator of lines with any whitespace trimmed.
+
+    :param skip_empty: omit whitespace only lines when true.
+    """
+    for line in stdin:
+        line = line.strip()
+        if not skip_empty or len(line) > 0:
+            yield line
+
+
+def slurp(
+    fname: str | Path, in_home_dir: bool = False, mode: str = "r"
+) -> bytes | str | None:
     """
     Read an entire file into a string
 
@@ -67,5 +85,5 @@ def slurp(fname: Union[str, Path],
     try:
         with open(str(fname), mode) as handle:
             return handle.read()
-    except IOError:
+    except OSError:
         return None

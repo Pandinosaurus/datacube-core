@@ -1,4 +1,6 @@
 include datacube/_version.py
+graft datacube/model/schema
+exclude datacube/conftest.py
 prune docs/
 prune docker/
 prune .github/

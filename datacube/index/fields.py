@@ -1,24 +1,31 @@
 # This file is part of the Open Data Cube, see https://opendatacube.org for more information
 #
-# Copyright (c) 2015-2020 ODC Contributors
+# Copyright (c) 2015-2026 ODC Contributors
 # SPDX-License-Identifier: Apache-2.0
 """
 Common datatypes for DB drivers.
 """
 
-from datetime import date, datetime, time
-from dateutil.tz import tz
-from typing import List
+from __future__ import annotations
 
-from datacube.model import Range
+from datetime import UTC, date, datetime, time
+from typing import override
+
+from datacube.model import Not, Range
 from datacube.model.fields import Expression, Field
 
-__all__ = ['Field',
-           'Expression',
-           'OrExpression',
-           'UnknownFieldError',
-           'to_expressions',
-           'as_expression']
+TYPE_CHECKING = False
+if TYPE_CHECKING:
+    from datacube.model import QueryField
+
+__all__ = [
+    "Expression",
+    "Field",
+    "OrExpression",
+    "UnknownFieldError",
+    "as_expression",
+    "to_expressions",
+]
 
 
 class UnknownFieldError(Exception):
@@ -26,30 +33,46 @@ class UnknownFieldError(Exception):
 
 
 class OrExpression(Expression):
-    def __init__(self, *exprs):
-        super(OrExpression, self).__init__()
+    def __init__(self, *exprs) -> None:
+        super().__init__()
         self.exprs = exprs
+        # Or expressions built by dc.load are always made up of simple expressions that share the same field.
+        self.field = exprs[0].field
 
-    def evaluate(self, ctx):
+    @override
+    def evaluate(self, ctx) -> bool:
         return any(expr.evaluate(ctx) for expr in self.exprs)
 
 
-def as_expression(field: Field, value) -> Expression:
+class NotExpression(Expression):
+    def __init__(self, expr) -> None:
+        super().__init__()
+        self.expr = expr
+        self.field = expr.field
+
+    @override
+    def evaluate(self, ctx) -> bool:
+        return not self.expr.evaluate(ctx)
+
+
+def as_expression(field: Field, value: QueryField) -> Expression:
     """
-    Convert a single field/value to expression, following the "simple" convensions.
+    Convert a single field/value to expression, following the "simple" conventions.
     """
     if isinstance(value, Range):
         return field.between(value.begin, value.end)
-    elif isinstance(value, list):
+    if isinstance(value, list):
         return OrExpression(*(as_expression(field, val) for val in value))
+    if isinstance(value, Not):
+        return NotExpression(as_expression(field, value.value))
     # Treat a date (day) as a time range.
-    elif isinstance(value, date) and not isinstance(value, datetime):
+    if isinstance(value, date) and not isinstance(value, datetime):
         return as_expression(
             field,
             Range(
-                datetime.combine(value, time.min.replace(tzinfo=tz.tzutc())),
-                datetime.combine(value, time.max.replace(tzinfo=tz.tzutc()))
-            )
+                datetime.combine(value, time.min.replace(tzinfo=UTC)),
+                datetime.combine(value, time.max.replace(tzinfo=UTC)),
+            ),
         )
     return field == value
 
@@ -57,15 +80,16 @@ def as_expression(field: Field, value) -> Expression:
 def _to_expression(get_field, name: str, value) -> Expression:
     field = get_field(name)
     if field is None:
-        raise UnknownFieldError('Unknown field %r' % name)
+        raise UnknownFieldError(f"Unknown field {name!r}")
 
-    return as_expression(field, value)
+    try:
+        return as_expression(field, value)
+    except ValueError as e:
+        raise ValueError(f"Invalid value for field '{name}', {e!s}") from None
 
 
-def to_expressions(get_field, **query) -> List[Expression]:
+def to_expressions(get_field, **query) -> list[Expression]:
     """
     Convert a simple query (dict of param names and values) to expression objects.
-    :type get_field: (str) -> Field
-    :type query: dict[str,str|float|datacube.model.Range]
     """
     return [_to_expression(get_field, name, value) for name, value in query.items()]

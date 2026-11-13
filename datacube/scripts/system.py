@@ -1,99 +1,193 @@
 # This file is part of the Open Data Cube, see https://opendatacube.org for more information
 #
-# Copyright (c) 2015-2020 ODC Contributors
+# Copyright (c) 2015-2026 ODC Contributors
 # SPDX-License-Identifier: Apache-2.0
+from __future__ import annotations
+
 import logging
+import warnings
 
 import click
 from click import echo, style
 from sqlalchemy.exc import OperationalError
 
 import datacube
-from datacube.index import index_connect
+from datacube.cfg import psql_url_from_config
 from datacube.drivers.postgres._connections import IndexSetupError
+from datacube.index import index_connect
+from datacube.migration import ODC2DeprecationWarning
 from datacube.ui import click as ui
 from datacube.ui.click import cli, handle_exception
-from datacube.config import LocalConfig
 
-_LOG = logging.getLogger('datacube-system')
+TYPE_CHECKING = False
+if TYPE_CHECKING:
+    from datacube.cfg import ODCEnvironment
+
+_LOG: logging.Logger = logging.getLogger("datacube-system")
 
 
-@cli.group(name='system', help='System commands')
-def system():
+@cli.group(name="system", help="System commands")
+def system() -> None:
     pass
 
 
-@system.command('init', help='Initialise the database')
+@system.command("init", help="Initialise the database")
 @click.option(
-    '--default-types/--no-default-types', is_flag=True, default=True,
-    help="Add default types? (default: true)"
+    "--default-types/--no-default-types",
+    is_flag=True,
+    default=True,
+    help="Add default types? (default: true)",
 )
 @click.option(
-    '--init-users/--no-init-users', is_flag=True, default=True,
-    help="Include user roles and grants. (default: true)"
+    "--init-users/--no-init-users",
+    is_flag=True,
+    default=True,
+    help="Include user roles and grants. (default: true)",
+    deprecated=True,
 )
 @click.option(
-    '--recreate-views/--no-recreate-views', is_flag=True, default=True,
-    help="Recreate dynamic views"
+    "--recreate-views/--no-recreate-views",
+    is_flag=True,
+    default=True,
+    help="Recreate dynamic views",
 )
 @click.option(
-    '--rebuild/--no-rebuild', is_flag=True, default=False,
-    help="Rebuild all dynamic fields (caution: slow)"
+    "--rebuild/--no-rebuild",
+    is_flag=True,
+    default=False,
+    help="Rebuild all dynamic fields (caution: slow)",
 )
 @click.option(
-    '--lock-table/--no-lock-table', is_flag=True, default=False,
-    help="Allow table to be locked (eg. while creating missing indexes)"
+    "--lock-table/--no-lock-table",
+    is_flag=True,
+    default=False,
+    help="Allow table to be locked (eg. while creating missing indexes)",
 )
 @ui.pass_index(expect_initialised=False)
-def database_init(index, default_types, init_users, recreate_views, rebuild, lock_table):
-    echo('Initialising database...')
+def database_init(
+    index, default_types, init_users, recreate_views, rebuild, lock_table
+) -> None:
+    echo("Initialising database...")
 
-    was_created = index.init_db(with_default_types=default_types,
-                                with_permissions=init_users)
+    if not init_users:
+        warnings.warn(
+            "The --no-init-users flag is now deprecated. "
+            "Please use standard ODC database roles for permissions management.",
+            ODC2DeprecationWarning,
+            stacklevel=1,
+        )
+    try:
+        was_created = index.init_db(
+            with_default_types=default_types, with_permissions=init_users
+        )
+    except OperationalError as e:
+        handle_exception("Error Connecting to Database: %s", e)
 
     if was_created:
-        echo(style('Created.', bold=True))
+        echo(style("Created.", bold=True))
     else:
-        echo(style('Updated.', bold=True))
+        echo(style("Updated.", bold=True))
 
-    echo('Checking indexes/views.')
+    echo("Checking indexes/views.")
     index.metadata_types.check_field_indexes(
         allow_table_lock=lock_table,
         rebuild_indexes=rebuild,
         rebuild_views=recreate_views or rebuild,
     )
-    echo('Done.')
+    echo("Done.")
 
 
-@system.command('check', help='Check and display current configuration')
+@system.command("check", help="Check and display current configuration")
 @ui.pass_config
-def check(local_config: LocalConfig):
+def check(cfg_env: ODCEnvironment) -> None:
     """
     Verify & view current configuration
     """
 
-    def echo_field(name, value):
-        echo('{:<15}'.format(name + ':') + style(str(value), bold=True))
+    def echo_field(name: str, value) -> None:
+        echo("{:<15}".format(name + ":") + style(str(value), bold=True))
 
-    echo_field('Version', datacube.__version__)
-    echo_field('Config files', ','.join(local_config.files_loaded))
-    echo_field('Host',
-               '{}:{}'.format(local_config['db_hostname'] or 'localhost', local_config.get('db_port', None) or '5432'))
-
-    echo_field('Database', local_config['db_database'])
-    echo_field('User', local_config['db_username'])
-    echo_field('Environment', local_config['env'])
-    echo_field('Index Driver', local_config['index_driver'])
+    echo_field("Version", datacube.__version__)
+    echo_field("Index Driver", cfg_env.index_driver)
+    db_url = psql_url_from_config(cfg_env)
+    echo_field("Database URL:", db_url)
+    echo_field("Skip broken datasets:", cfg_env.skip_broken_datasets)
+    echo_field("Datacube load limit:", cfg_env.dc_load_limit)
 
     echo()
-    echo('Valid connection:\t', nl=False)
+    echo("Valid connection:\t", nl=False)
     try:
-        index = index_connect(local_config=local_config)
-        echo(style('YES', bold=True))
-        for role, user, description in index.users.list_users():
-            if user == local_config['db_username']:
-                echo('You have %s privileges.' % style(role.upper(), bold=True))
+        index = index_connect(config_env=cfg_env)
+        echo(style("YES", bold=True))
+        if index.url_parts.username:
+            for role, user, _ in index.users.list_users():
+                if user == index.url_parts.username:
+                    echo(f"You have {style(role.upper(), bold=True)} privileges.")
     except OperationalError as e:
-        handle_exception('Error Connecting to Database: %s', e)
+        handle_exception("Error Connecting to Database: %s", e)
     except IndexSetupError as e:
-        handle_exception('Database not initialised: %s', e)
+        handle_exception("Database not initialised: %s", e)
+
+
+@system.command("clone", help="Clone an existing ODC index into a new, empty index")
+@click.option(
+    "--batch-size",
+    help="Size of batches for bulk-adding to the new index",
+    type=int,
+    default=1000,
+)
+@click.option(
+    "--skip-lineage/--no-skip-lineage",
+    is_flag=True,
+    default=False,
+    help="Do not load lineage data where possible. (default: false - i.e. do not skip lineage)",
+)
+@click.option(
+    "--lineage-only/--no-lineage-only",
+    is_flag=True,
+    default=False,
+    help="Clone lineage data only. (default: false)",
+)
+@click.argument("source-env", type=str, nargs=1)
+@ui.pass_config
+def clone(
+    env: ODCEnvironment,
+    batch_size: int,
+    skip_lineage: bool,
+    lineage_only: bool,
+    source_env: str,
+) -> None:
+    if skip_lineage and lineage_only:
+        echo("Cannot set both lineage-only and skip-lineage", err=True)
+        exit(1)
+    try:
+        destination_index = index_connect(env, validate_connection=True)
+    except OperationalError as e:
+        handle_exception("Error Connecting to Destination Database: %s", e)
+        exit(1)
+    except IndexSetupError as e:
+        handle_exception("Destination database not initialised: %s", e)
+        exit(1)
+
+    try:
+        source_config = env._cfg[source_env]
+    except KeyError:
+        raise click.ClickException(
+            f"No datacube config found for '{source_env}'"
+        ) from None
+
+    try:
+        src_index = index_connect(source_config, validate_connection=True)
+    except OperationalError as e:
+        handle_exception("Error Connecting to Source Database: %s", e)
+        exit(1)
+    except IndexSetupError as e:
+        handle_exception("Source database not initialised: %s", e)
+        exit(1)
+    # Any errors will have be logged.
+    destination_index.clone(
+        src_index,
+        batch_size=batch_size,
+        skip_lineage=skip_lineage,
+        lineage_only=lineage_only,
+    )

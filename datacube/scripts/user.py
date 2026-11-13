@@ -1,57 +1,66 @@
 # This file is part of the Open Data Cube, see https://opendatacube.org for more information
 #
-# Copyright (c) 2015-2020 ODC Contributors
+# Copyright (c) 2015-2026 ODC Contributors
 # SPDX-License-Identifier: Apache-2.0
-import logging
-import click
+from __future__ import annotations
+
 import csv
+import logging
 import sys
+from collections import OrderedDict
+from getpass import getpass
+
+import click
 import yaml
 import yaml.resolver
 
-from collections import OrderedDict
-
-from datacube.utils import gen_password
-from datacube.config import LocalConfig
-from datacube.index import Index
 from datacube.ui import click as ui
 from datacube.ui.click import cli
+from datacube.utils import gen_password
 from datacube.utils.serialise import SafeDatacubeDumper
 
-_LOG = logging.getLogger('datacube-user')
-USER_ROLES = ('user', 'ingest', 'manage', 'admin')
+TYPE_CHECKING = False
+if TYPE_CHECKING:
+    from collections.abc import Iterable, Sequence
+
+    from datacube.cfg import ODCEnvironment
+    from datacube.index import Index
+    from datacube.index.abstract import AbstractIndex
+
+_LOG: logging.Logger = logging.getLogger("datacube-user")
+USER_ROLES = ("user", "manage", "admin")
 
 
-@cli.group(name='user', help='User management commands')
-def user_cmd():
+@cli.group(name="user", help="User management commands")
+def user_cmd() -> None:
     pass
 
 
-def build_user_list(index):
+def build_user_list(index: Index) -> Sequence[OrderedDict[str, str | None]]:
     lstdct = []
     for role, user, description in index.users.list_users():
-        info = OrderedDict((
-            ('role', role),
-            ('user', user),
-            ('description', description)
-        ))
+        info = OrderedDict(
+            (("role", role), ("user", user), ("description", description))
+        )
         lstdct.append(info)
     return lstdct
 
 
-def _write_csv(index):
-    writer = csv.DictWriter(sys.stdout, ['role', 'user', 'description'], extrasaction='ignore')
+def _write_csv(index: Iterable[dict[str, str | None]]) -> None:
+    writer = csv.DictWriter(
+        sys.stdout, ["role", "user", "description"], extrasaction="ignore"
+    )
     writer.writeheader()
 
-    def add_first_role(row):
-        roles_ = row['role']
-        row['role'] = roles_ if roles_ else None
+    def add_first_role(row: dict[str, str | None]) -> dict[str, str | None]:
+        roles_ = row["role"]
+        row["role"] = roles_ or None
         return row
 
     writer.writerows(add_first_role(row) for row in index)
 
 
-def _write_yaml(index):
+def _write_yaml(index: Iterable[dict[str, str | None]]) -> str | bytes | None:
     """
     Dump yaml data with support for OrderedDicts.
 
@@ -59,69 +68,107 @@ def _write_yaml(index):
 
     (Ordered dicts are output identically to normal yaml dicts: their order is purely for readability)
     """
-
-    return yaml.dump_all(index, sys.stdout, SafeDatacubeDumper, default_flow_style=False, indent=4)
+    return yaml.dump_all(
+        index, sys.stdout, SafeDatacubeDumper, default_flow_style=False, indent=4
+    )
 
 
 _OUTPUT_WRITERS = {
-    'csv': _write_csv,
-    'yaml': _write_yaml,
+    "csv": _write_csv,
+    "yaml": _write_yaml,
 }
 
 
-@user_cmd.command('list')
-@click.option('-f', help='Output format',
-              type=click.Choice(list(_OUTPUT_WRITERS)), default='yaml', show_default=True)
+@user_cmd.command("list")
+@click.option(
+    "-f",
+    help="Output format",
+    type=click.Choice(list(_OUTPUT_WRITERS)),
+    default="yaml",
+    show_default=True,
+)
 @ui.pass_index()
-def list_users(index, f):
+def list_users(index: Index, f: str) -> None:
     """
     List users
     """
     _OUTPUT_WRITERS[f](build_user_list(index))
 
 
-@user_cmd.command('grant')
-@click.argument('role',
-                type=click.Choice(USER_ROLES),
-                nargs=1)
-@click.argument('users', nargs=-1)
+@user_cmd.command("grant")
+@click.argument("role", type=click.Choice(USER_ROLES), nargs=1)
+@click.argument("users", nargs=-1)
 @ui.pass_index()
-def grant(index, role, users):
+def grant(index: Index, role: str, users: Sequence[str]) -> None:
     """
     Grant a role to users
     """
-    index.users.grant_role(role, *users)
+    if len(users) == 0:
+        click.echo("No users specified")
+        sys.exit(1)
+    if not index.users.grant_role(role, users):
+        click.echo(f"Could not grant role to user(s): {','.join(users)}")
+        sys.exit(1)
 
 
-@user_cmd.command('create')
-@click.argument('role',
-                type=click.Choice(USER_ROLES), nargs=1)
-@click.argument('user', nargs=1)
-@click.option('--description')
+@user_cmd.command("create")
+@click.argument("role", type=click.Choice(USER_ROLES), nargs=1)
+@click.argument("user", nargs=1)
+@click.option("--description")
+@click.option(
+    "--passwd-stdin", is_flag=True, default=False, help="Read user password from stdin"
+)
 @ui.pass_index()
 @ui.pass_config
-def create_user(config, index, role, user, description):
-    # type: (LocalConfig, Index, str, str, str) -> None
+def create_user(
+    cfg_env: ODCEnvironment,
+    index: AbstractIndex,
+    role: str,
+    user: str,
+    description: str,
+    passwd_stdin: bool,
+) -> None:
     """
     Create a User
     """
-    password = gen_password(12)
-    index.users.create_user(user, password, role, description=description)
+    if passwd_stdin:
+        if sys.stdin.isatty():
+            password = getpass()
+            second_password = getpass("Confirm password: ")
+            if password != second_password:
+                click.echo("ERROR: Passwords do not match", err=True)
+                sys.exit(1)
+        else:
+            password = sys.stdin.read().rstrip()
+    else:
+        password = gen_password(12)
+    result = index.users.create_user(user, password, role, description=description)
 
-    click.echo('{host}:{port}:*:{username}:{password}'.format(
-        host=config.get('db_hostname', None) or 'localhost',
-        port=config.get('db_port', None),
-        username=user,
-        password=password
-    ))
+    if result:
+        click.echo(
+            "{host}:{port}:*:{username}:{password}".format(
+                host=index.url_parts.hostname or "localhost",
+                port=index.url_parts.port,
+                username=user,
+                password="password taken from stdin" if passwd_stdin else password,
+            )
+        )
+    else:
+        click.echo(f"Could not create user {user}.")
+        sys.exit(1)
 
 
-@user_cmd.command('delete')
-@click.argument('users', nargs=-1)
+@user_cmd.command("delete")
+@click.argument("users", nargs=-1)
 @ui.pass_index()
 @ui.pass_config
-def delete_user(config, index, users):
+def delete_user(config, index: Index, users: Sequence[str]) -> None:
     """
     Delete a User
     """
-    index.users.delete_user(*users)
+    if len(users) == 0:
+        click.echo("No users specified")
+        sys.exit(1)
+    if not index.users.delete_user(users):
+        click.echo(f"Could not delete user(s): {','.join(users)}")
+        sys.exit(1)

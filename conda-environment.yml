@@ -4,9 +4,10 @@ channels:
   - defaults
 dependencies:
   - pip
-  - python >=3.8
+  - python >=3.10
   - setuptools
-  - setuptools_scm >=3.4
+  - deprecat
+  - setuptools_scm >=8
   - toml
   - pytest-runner
   - sphinx
@@ -16,20 +17,26 @@ dependencies:
   - botocore
   - boto3
   - cachetools
-  - click
-  - cloudpickle >=0.4.0
+  - click>=5.0
   - dask
-  - pyproj
-  - shapely
-  - jsonschema
-  - lark-parser
+  - pyproj >=2.5
+  - shapely >=2.0
+  - jsonschema >=4.18
+  - gdal
+  - lark
   - netcdf4
   - numpy
   - pandas
+  - psycopg
   - psycopg2
   - python-dateutil
   - pyyaml
-  - rasterio >=1.0.2
-  - sqlalchemy
+  - rasterio >=1.4.4
+  - sqlalchemy >=2.0
+  - alembic
+  - GeoAlchemy2 >= 0.17.0
   - xarray >=0.9
   - toolz
+  - odc-geo >=0.4.8
+  - odc-loader >=0.6.3
+  - odc-stac >= 0.5.0
